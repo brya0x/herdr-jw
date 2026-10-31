@@ -12,7 +12,7 @@ y worktrees. Sin la app de Android.
 
 Luego mezcla `config/keys.json` a mano en `~/.config/herdr-app/keys.json` (el script no lo toca):
 
-- añade `"cmd-shift-n": "mod.open:factory"` y `"cmd-shift-u": "mod.open:factory-usage"`;
+- añade `"cmd-shift-n": "mod.open:factory"`, `"cmd-shift-u": "mod.open:factory-usage"` y `"cmd-shift-t": "mod.open:factory-tasks"`;
 - quita los atajos `tab.*` (`cmd-t`, `cmd-1..9`, `ctrl-tab`, `f2`...) salvo `cmd-w`.
 
 Activa el layout con `ctrl-shift-l` (o `herdr-app do layout.switch '{"name":"factory"}'`).
@@ -26,6 +26,7 @@ Para guardar cambios hechos en la config viva: `./sync.sh pull`, y commit.
 | `mods/tabs-one` | Clon de `tabs` sin pestañas ni `+`: un solo tab por workspace. Deja el nombre, Files, Changes y los botones de ventana. |
 | `mods/factory` | `cmd-shift-n`: pide un nombre, crea `~/ws/<nombre>/`, un space con `claude` y el panel de repos al lado. El panel añade repos de GitHub (`gh repo clone` a `.part`) o carpetas (enlazadas, sin copiar), muestra estado, rama y cambios, y las ramas con su PR (mergeado, CI fallido, con toast). El manifiesto es `<carpeta>/.factory.json`. |
 | `mods/worktree-wt` | Clon del mod `worktree` con la creación de jw: lee `.jw.toml` (`root`, `setup`, `copy`, `open`), la carpeta es el último segmento de la rama, valida como jw, corre `setup` antes de abrir, tarea inicial para claude, y avisa de commits sin subir al quitar. Los checkouts van a `<repo>-wt/`. |
+| `mods/factory-tasks` + `skill/herdr-tasks` | `cmd-shift-t`: lista de tareas del workspace (Markdown de jw, en `~/.config/herdr-app/data/tasks/`, una por carpeta) y su bucle: al terminar el turno el agente recibe la siguiente tarea lista (`hc send`), hasta 20 vueltas o hasta que todo esté hecho o una tarea quede bloqueada. El bucle y el contador `n/m` viven en `tabs-one` (que lleva su copia de `lib.js`, `sync.sh push` la mantiene); `sync.sh push` instala el skill en `~/.claude/skills/`. |
 | `mods/factory-usage` | `cmd-shift-u`: costo y tokens por proyecto y por semana, de `~/.claude/projects` (mismas reglas de conteo que `usage.rs` de jw). |
 
 ## Tarifas

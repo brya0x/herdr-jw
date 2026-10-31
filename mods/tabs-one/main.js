@@ -1,6 +1,7 @@
 import { View, div, svg } from "gpui-kit";
 import { h_flex } from "gpui-base";
-import { spaces, run, theme, window, shared, layout, settings } from "herdr";
+import { spaces, agents, run, hc, openOverlay, readTextFile, appHome, theme, window, shared, setShared, layout, settings } from "herdr";
+import { parse, pick, count, prompt, pathFor, MAX_LAPS } from "./tasks-lib.js";
 
 function find(node, id) {
   if (node?.id === id) return node;
@@ -12,7 +13,9 @@ function find(node, id) {
 }
 
 export default class Tabs extends View {
-  init() {
+  init(_props, cx) {
+    this.prev = {}; this.counts = {};
+    cx.timer.every(2000, (cx) => this.tick(cx));
     this.panels = JSON.parse(localStorage.getItem("panels") ?? "{}");
   }
 
@@ -44,6 +47,37 @@ export default class Tabs extends View {
     localStorage.setItem("panels", JSON.stringify(this.panels));
   }
 
+  // The task loop: when an agent ends a turn (working -> idle/done) in a space whose loop is on, give it the next task.
+  // shortcut: a turn shorter than the 2 s poll is missed and stalls the loop, turn the loop off and on to kick it.
+  tick(cx) {
+    if (this.busy) return;
+    this.busy = true;
+    cx.spawn(async (cx) => {
+      try {
+        const data = `${appHome()}/data`;
+        for (const sp of spaces()) {
+          const ag = agents().find((a) => a.space === sp.id && a.program?.agent);
+          const was = this.prev[sp.id]; this.prev[sp.id] = ag?.status;
+          const st = (shared("factory.tasks") ?? {})[sp.folder];
+          const mine = st?.on && st.space === sp.id; // spaces can share a folder: only the one that started the loop gets its tasks
+          if (!sp.folder || !(sp.active || mine)) continue;
+          const path = pathFor(data, sp.folder), tasks = parse(await readTextFile(path));
+          this.counts[sp.folder] = count(tasks);
+          if (!mine || !ag || !["idle", "done"].includes(ag.status) || !(st.kick || was === "working")) continue;
+          const set = (v) => setShared("factory.tasks", { ...(shared("factory.tasks") ?? {}), [sp.folder]: { ...st, ...v } });
+          const next = pick(tasks);
+          if (next.stop) set({ on: false, kick: false, reason: next.stop });
+          else if (st.laps >= MAX_LAPS) set({ on: false, kick: false, reason: "se acabaron las vueltas" });
+          else {
+            set({ laps: st.laps + 1, kick: false });
+            const r = await hc(["send", ag.address, prompt(next.task, path)]);
+            if (r.code !== 0) set({ laps: st.laps + 1, on: false, kick: false, reason: "hc send falló" });
+          }
+        }
+      } finally { this.busy = false; }
+    });
+  }
+
   render() {
     const t = theme();
     const space = spaces().find(p => p.active);
@@ -55,6 +89,7 @@ export default class Tabs extends View {
     const lightsPadding = w?.platform === "macos" && w.titlebar === "none" && !w.fullscreen && root?.traffic_lights
       ? Math.max(10, (root.traffic_lights[0] + 64) / settings().zoom - (sidebar?.hidden ? 0 : sidebar?.size?.px ?? 0))
       : 10;
+    const loop = (shared("factory.tasks") ?? {})[space?.folder];
     const panel = find(root, "panel"), body = find(root, "panel-body");
     const enabled = shared("workspace.panels") ?? ["files", "changes"];
     this.syncPanel(space, panel, body, enabled);
@@ -70,6 +105,10 @@ export default class Tabs extends View {
     };
     return h_flex().size_full().min_w(0).px(10).pl(lightsPadding).gap(3).items_center().bg(t.chrome).border_b(1).border_color(t.border)
       .child(div().id("space-name").flex_1().min_w(0).truncate().text_size(12.8).text_color(t.muted).child(space?.name ?? ""))
+      .when(Boolean(this.counts[space?.folder]?.total || loop?.on), el => el.child(h_flex().id("tasks-chip").h(26).px(8).gap(4).flex_none().items_center().rounded(6).text_size(12).text_color(t.muted)
+        .hover(s => s.bg(t.hover)).on_mouse_down("left", stop)
+        .on_click(() => openOverlay({ mod: "factory-tasks", kind: "dialog", width: 640, height: 520 }))
+        .child(`${loop?.on ? "⟳ " : ""}${this.counts[space?.folder]?.done ?? 0}/${this.counts[space?.folder]?.total ?? 0}`)))
       .when(enabled.includes("files"), el => el.child(panelButton("files", "Files", "mods/files/file.svg")))
       .when(enabled.includes("changes"), el => el.child(panelButton("changes", "Changes", "mods/changes/changes.svg")))
       .when(w?.buttons, el => el.child(button("minimize", w.platform === "windows" ? svg("mods/tabs-one/win-min.svg").size(16) : "−", () => run("window.minimize")))
