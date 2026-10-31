@@ -39,7 +39,7 @@ export default class Picker extends View {
     this.filter = "";
     this.input = InputState.new({ placeholder: "Go to a space or agent…" });
     this.input.on("change", (_e, cx) => { this.filter = this.input.value(); this.at = 0; cx.notify(); });
-    this.input.on("submit", () => this.go(this.rows().filter(r => r.kind === "ctx" || r.kind === "space")[this.at]));
+    this.input.on("submit", () => this.go(this.rows().filter(r => r.kind === "ws" || r.kind === "space")[this.at]));
     this.input.focus();
     cx.timer.after(600, () => this.input.focus());
     this.at = null;
@@ -75,7 +75,7 @@ export default class Picker extends View {
           const mine = all.filter((a) => a.tab === ctx.id);
           return { w, ctx, mine, team: teamOf(mine.map((a) => a.address)) };
         })
-        .filter((c) => !f || [w.name, c.ctx.name, ...c.mine.map((a) => a.program?.name ?? "")].join(" ").toLowerCase().includes(f));
+        .filter((c) => !f || [w.name, ...c.mine.map((a) => a.program?.name ?? "")].join(" ").toLowerCase().includes(f));
       return { w, ctxs };
     });
     const busy = groups.filter((p) => p.w.status && p.ctxs.length);
@@ -83,8 +83,7 @@ export default class Picker extends View {
     busy.sort((a, b) => (b.w.status === "blocked") - (a.w.status === "blocked"));
     const out = [];
     const add = (p) => {
-      out.push({ kind: "head", w: p.w });
-      for (const c of p.ctxs) out.push({ kind: "ctx", ...c });
+      out.push({ kind: "ws", w: p.w, mine: p.ctxs.flatMap((c) => c.mine), team: p.ctxs.reduce((n, c) => n + c.team, 0) });
     };
     busy.forEach(add);
     if (quiet.length) {
@@ -99,7 +98,7 @@ export default class Picker extends View {
   go(r) {
     if (!r) return;
     this.close();
-    if (r.kind === "ctx") run("tab.select", { id: r.ctx.id });
+    if (r.kind === "ws") run("space.select", { id: r.w.id });
     else if (r.kind === "space") run("space.new", r.machine ? { machine: r.machine } : {});
   }
 
@@ -111,26 +110,13 @@ export default class Picker extends View {
   render() {
     const t = theme();
     const rows = this.rows();
-    const pickable = rows.filter((r) => r.kind === "ctx" || r.kind === "space");
+    const pickable = rows.filter((r) => r.kind === "ws" || r.kind === "space");
     // Opens on where you are.
-    if (this.at === null) this.at = Math.max(0, pickable.findIndex((r) => r.kind === "ctx" && r.w.active && r.ctx.active));
+    if (this.at === null) this.at = Math.max(0, pickable.findIndex((r) => r.kind === "ws" && r.w.active));
     this.at = Math.min(this.at, pickable.length - 1);
     const sel = pickable[this.at];
 
     const row = (r) => {
-      if (r.kind === "head") {
-        return h_flex()
-          .px(10)
-          .pt(10)
-          .pb(3)
-          .gap(8)
-          .items_center()
-          .text_size(11)
-          .font_semibold()
-          .text_color(t.dim)
-          .child(h_flex().size(18).rounded(5).bg(spaceColor(t, r.w)).items_center().justify_center().text_size(10.5).font_bold().text_color("#ffffff").child([...r.w.name][0]?.toUpperCase() ?? "?"))
-          .child(r.w.name);
-      }
       if (r.kind === "earlier") {
         return h_flex()
           .id("pk-earlier")
@@ -170,9 +156,9 @@ export default class Picker extends View {
           .child(label);
       }
       const who = r.mine.map((a) => a.program?.name ?? "agent").join(" · ");
-      const here = r.w.active && r.ctx.active;
+      const here = r.w.active;
       return h_flex()
-        .id(`pk-${r.ctx.id}`)
+        .id(`pk-${r.w.id}`)
         .mx(4)
         .px(10)
 .h(32)
@@ -183,10 +169,10 @@ export default class Picker extends View {
         .when(on, (el) => el.bg(t.hover))
         .hover((s) => s.bg(t.hover))
         .on_click(() => this.go(r))
-        .child(this.glyph(t, r.ctx.status))
-        .child(div().flex_1().truncate().text_color(t.foreground).when(here, (d) => d.font_semibold()).child(r.ctx.name))
-        .when(r.ctx.status === "blocked", (el) => el.child(div().text_size(11).text_color(t.blocked).child("needs you")))
-        .when(r.ctx.status === "done", (el) => el.child(div().text_size(11).text_color(t.done).child("finished")))
+        .child(this.glyph(t, r.w.status))
+        .child(div().flex_1().truncate().text_color(t.foreground).when(here, (d) => d.font_semibold()).child(r.w.name))
+        .when(r.w.status === "blocked", (el) => el.child(div().text_size(11).text_color(t.blocked).child("needs you")))
+        .when(r.w.status === "done", (el) => el.child(div().text_size(11).text_color(t.done).child("finished")))
         .child(div().text_size(11).text_color(t.dim).child(who + (r.team ? `  +${r.team}` : "")));
     };
 
@@ -214,7 +200,7 @@ export default class Picker extends View {
           .child(svg("mods/workspace-chrome/search.svg").size(15).text_color(t.dim))
           .child(Input.new(this.input).flex_1().h_full().text_size(12.8).text_color(t.foreground)),
       )
-      .child(v_flex().h(Math.min(320, 6 + rows.reduce((h, r) => h + (r.kind === "head" ? 29 : r.kind === "earlier" ? 35 : r.kind === "new" ? 36 : 32), 0))).min_h(0).flex_shrink(1).pb(6).overflow_y_scrollbar().children(rows.map(row)));
+      .child(v_flex().h(Math.min(320, 6 + rows.reduce((h, r) => h + (r.kind === "earlier" ? 35 : r.kind === "new" ? 36 : 32), 0))).min_h(0).flex_shrink(1).pb(6).overflow_y_scrollbar().children(rows.map(row)));
 
   }
 }
