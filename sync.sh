@@ -5,7 +5,7 @@
 set -eu
 H=${HERDR_APP_HOME:-$HOME/.config/herdr-app}
 R=$(cd "$(dirname "$0")" && pwd)
-MODS="factory factory-usage worktree-wt tabs-one"
+MODS="factory factory-usage worktree-wt tabs-one picker-one"
 # gpui-kit.d.ts and jsconfig.json are written by Herdr on every start
 rs() { rsync -a "$@" --exclude=gpui-kit.d.ts --exclude=jsconfig.json --exclude='*.error' --exclude=.DS_Store; }
 case ${1:-} in

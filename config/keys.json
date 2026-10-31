@@ -12,7 +12,7 @@
     "cmd-n": "space.new",
     "cmd-shift-n": "mod.open:factory",
     "cmd-shift-u": "mod.open:factory-usage",
-    "cmd-p": "mod.open:picker",
+    "cmd-p": "mod.open:picker-one",
     "cmd-shift-p": "app.palette",
     "cmd-,": "app.settings",
     "cmd-d": "pane.split:right",
