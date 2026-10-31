@@ -198,7 +198,7 @@ export default class Worktree extends View {
     if (branch.startsWith("-") || !(await git(this.repo.top, ["check-ref-format", "--branch", branch], this.on)).ok) return `«${branch}» no es un nombre de rama válido.`;
     const folder = folderOf(branch);
     if (!validFolder(folder)) return `«${folder}» no sirve de nombre de carpeta (una sola pieza, hasta 80 letras, sin / ni \\).`;
-    const dest = `${rootOf(this.cfg, this.repo.main, this.userHome)}/${folder}`;
+    const dest = `${props()?.root || rootOf(this.cfg, this.repo.main, this.userHome)}/${folder}`;
     if ((await exec("sh", ["-c", '[ -e "$1" ] || [ -L "$1" ]', "sh", dest], { on: this.on })).code === 0) return `Ya existe ${tilde(dest, this.userHome)}.`;
     const exists = (await git(this.repo.main, ["show-ref", "--verify", "--quiet", `refs/heads/${branch}`], this.on)).ok;
     // an existing branch is checked out as it is; a new one starts from HEAD, as in jw
@@ -352,7 +352,7 @@ export default class Worktree extends View {
             ? !r.linked
               ? "This is the repository's main checkout, not a worktree."
               : `Closes the space and deletes ${tilde(r.top, this.userHome)}. The branch stays.`
-            : `Un space nuevo en ${tilde(rootOf(this.cfg ?? { root: "" }, r.main, this.userHome), this.userHome)}/<carpeta>. Una rama que existe se usa tal cual; una nueva parte de HEAD. La carpeta es el último segmento del nombre.`;
+            : `Un space nuevo en ${tilde(props()?.root || rootOf(this.cfg ?? { root: "" }, r.main, this.userHome), this.userHome)}/<carpeta>. Una rama que existe se usa tal cual; una nueva parte de HEAD. La carpeta es el último segmento del nombre.`;
     const blocked = !r || (remove && !r.linked);
     return v_flex()
       .id("worktree")

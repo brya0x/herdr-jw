@@ -73,7 +73,7 @@ export class Repos {
   }
 
   worktree(r, action) {
-    openOverlay({ mod: "worktree-wt", kind: "dialog", ...(action === "open" ? { width: 560, height: 480 } : { width: 460, height: 280 }), props: { folder: r.real, action } });
+    openOverlay({ mod: "worktree-wt", kind: "dialog", ...(action === "open" ? { width: 560, height: 480 } : { width: 460, height: 280 }), props: { folder: r.real, action, root: `${this.folder}/worktrees/${r.name}` } });
   }
 
   row(r, i, t) {
