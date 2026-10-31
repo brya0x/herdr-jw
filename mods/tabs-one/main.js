@@ -1,6 +1,6 @@
 import { View, div, svg } from "gpui-kit";
 import { h_flex } from "gpui-base";
-import { spaces, agents, run, hc, openOverlay, readTextFile, appHome, theme, window, shared, setShared, layout, settings } from "herdr";
+import { spaces, agents, setAgentOrder, run, hc, openOverlay, readTextFile, appHome, theme, window, shared, setShared, layout, settings } from "herdr";
 import { parse, pick, count, prompt, pathFor, MAX_LAPS } from "./tasks-lib.js";
 
 function find(node, id) {
@@ -89,6 +89,8 @@ export default class Tabs extends View {
     const lightsPadding = w?.platform === "macos" && w.titlebar === "none" && !w.fullscreen && root?.traffic_lights
       ? Math.max(10, (root.traffic_lights[0] + 64) / settings().zoom - (sidebar?.hidden ? 0 : sidebar?.size?.px ?? 0))
       : 10;
+    // cmd-] / cmd-[ follow the sidebar: spaces in list order, each one's agents in model order.
+    setAgentOrder(spaces().flatMap((sp) => agents().filter((a) => a.space === sp.id).map((a) => a.address)));
     const loop = (shared("factory.tasks") ?? {})[space?.folder];
     const panel = find(root, "panel"), body = find(root, "panel-body");
     const enabled = shared("workspace.panels") ?? ["files", "changes"];
