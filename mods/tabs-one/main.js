@@ -1,6 +1,6 @@
 import { View, div, svg } from "gpui-kit";
 import { h_flex } from "gpui-base";
-import { spaces, agents, setAgentOrder, nextCommand, run, hc, openOverlay, readTextFile, appHome, theme, window, shared, setShared, layout, settings } from "herdr";
+import { spaces, agents, setAgentOrder, run, hc, openOverlay, readTextFile, appHome, theme, window, shared, setShared, layout, settings } from "herdr";
 import { parse, pick, count, prompt, pathFor, MAX_LAPS } from "./tasks-lib.js";
 
 function find(node, id) {
@@ -15,15 +15,6 @@ function find(node, id) {
 export default class Tabs extends View {
   init(_props, cx) {
     this.prev = {}; this.counts = {};
-    // keys.json: "cmd-ctrl-left": "tabs-one.grow", "cmd-ctrl-right": "tabs-one.shrink" (the side panel; splits have no resize command)
-    cx.spawn(async () => {
-      for (;;) {
-        const c = await nextCommand(), node = find(layout(), "panel");
-        if (!node || (c !== "grow" && c !== "shrink")) continue;
-        if (node.hidden) run("layout.show", { id: "panel" });
-        else run("layout.resize", { id: "panel", px: Math.min(900, Math.max(280, (node.size?.px ?? 368) + (c === "grow" ? 40 : -40))) });
-      }
-    });
     cx.timer.every(2000, (cx) => this.tick(cx));
     this.panels = JSON.parse(localStorage.getItem("panels") ?? "{}");
   }
