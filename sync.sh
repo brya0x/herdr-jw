@@ -14,6 +14,7 @@ case ${1:-} in
     cp "$R/mods/factory-tasks/lib.js" "$R/mods/tabs-one/tasks-lib.js"
     for m in $MODS; do mkdir -p "$H/mods/$m"; rs "$R/mods/$m/" "$H/mods/$m/"; done
     cp "$R/layouts/jw.json" "$H/layouts/jw.json"
+    python3 "$R/themes/build.py" >/dev/null
     mkdir -p "$HOME/.claude/skills/herdr-tasks"; cp "$R/skill/herdr-tasks/SKILL.md" "$HOME/.claude/skills/herdr-tasks/SKILL.md" ;;
   pull)
     for m in $MODS; do mkdir -p "$R/mods/$m"; rs --delete "$H/mods/$m/" "$R/mods/$m/"; done

@@ -1,0 +1,10 @@
+{
+  "name": "Solarized Dark",
+  "slug": "solarized-dark",
+  "p": {
+    "bg": "#002b36", "bg_dark": "#00212b", "bg_float": "#073642", "bg_hl": "#0b3d4a", "sel": "#0f4856", "border": "#1c4a57",
+    "fg": "#93a1a1", "fg_dark": "#839496", "comment": "#586e75", "dim": "#586e75",
+    "red": "#dc322f", "orange": "#cb4b16", "yellow": "#b58900", "green": "#859900", "teal": "#2aa198", "cyan": "#2aa198", "blue": "#268bd2", "magenta": "#d33682",
+    "black": "#073642", "add": "#0c3b2f", "add_dim": "#06322c", "add_word": "#2a6b47", "del": "#40262d", "del_dim": "#2f2229", "del_word": "#8a3037"
+  }
+}
