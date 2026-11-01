@@ -7,15 +7,17 @@ y worktrees. Sin la app de Android.
 ## Instalar
 
 ```sh
-./sync.sh push      # copia mods/ y layouts/ a ~/.config/herdr-app
+curl -fsSL https://raw.githubusercontent.com/brya0x/herdr-jw/main/install.sh | sh
 ```
 
-Luego mezcla `config/keys.json` a mano en `~/.config/herdr-app/keys.json` (el script no lo toca):
+Hace falta Herdr (abierto una vez), `curl`, `tar`, `rsync` y `python3`. El script baja el repo, copia mods, layout,
+temas y el skill `herdr-tasks` a `~/.config/herdr-app`, y añade a `keys.json` los atajos de este repo (quita los `tab.*`;
+si cambia algo deja una copia `keys.json.bak-<fecha>`). Con `| sh -s -- --no-keys` no toca `keys.json`.
+`HERDR_JW_REF=<rama|tag>` elige la versión. Volver a correrlo actualiza.
 
-- añade `"cmd-shift-n": "mod.open:factory"`, `"cmd-shift-u": "mod.open:factory-usage"` y `"cmd-shift-t": "mod.open:factory-tasks"`;
-- quita los atajos `tab.*` (`cmd-t`, `cmd-1..9`, `ctrl-tab`, `f2`...) salvo `cmd-w`.
+Reinicia Herdr y activa el layout con `herdr-app do layout.switch '{"name":"jw"}'` (el script no lo cambia solo).
 
-Activa el layout con `herdr-app do layout.switch '{"name":"jw"}'` (ya no hay atajo).
+Desde un clon: `./sync.sh push` copia lo mismo sin tocar `keys.json` (mézclalo a mano desde `config/keys.json`).
 Para guardar cambios hechos en la config viva: `./sync.sh pull`, y commit.
 
 ## Qué hay
