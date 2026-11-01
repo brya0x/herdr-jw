@@ -20,7 +20,7 @@ def herdr(s, p):
     }
 
 def claude(s, p):
-    return {"name": s["name"], "base": "dark", "overrides": {
+    return {"name": s["name"], "base": s["mode"], "overrides": {
         "claude": p["blue"], "text": p["fg"], "inverseText": p["bg"], "inactive": p["comment"], "subtle": p["dim"],
         "suggestion": p["cyan"], "permission": p["blue"], "remember": p["magenta"],
         "success": p["green"], "error": p["red"], "warning": p["yellow"], "merged": p["magenta"],
@@ -35,8 +35,11 @@ def put(path, data):
     os.makedirs(os.path.dirname(path), exist_ok=True)
     open(path, "w").write(json.dumps(data, indent=2) + "\n")
 
-if __name__ == "__main__":
+def main():
     for f in sorted(glob.glob(os.path.join(HERE, "*.json"))):
         s = json.load(open(f)); p = s["p"]; slug = s["slug"]
         put(f"{H}/themes/{slug}.json", herdr(s, p)); put(f"{C}/{slug}.json", claude(s, p))
         print(f"{slug}: {H}/themes/{slug}.json, {C}/{slug}.json")
+
+if __name__ == "__main__":
+    main()

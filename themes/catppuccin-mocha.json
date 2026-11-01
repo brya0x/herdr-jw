@@ -1,0 +1,32 @@
+{
+  "name": "Catppuccin Mocha",
+  "slug": "catppuccin-mocha",
+  "mode": "dark",
+  "p": {
+    "bg": "#1e1e2e",
+    "bg_dark": "#181825",
+    "bg_float": "#45475a",
+    "bg_hl": "#313244",
+    "sel": "#363f5b",
+    "border": "#484b5e",
+    "fg": "#cdd6f4",
+    "fg_dark": "#b3bad6",
+    "comment": "#6c7086",
+    "dim": "#4d4f63",
+    "red": "#f38ba8",
+    "orange": "#f6b6ac",
+    "yellow": "#f9e2af",
+    "green": "#a6e3a1",
+    "teal": "#94e2d5",
+    "cyan": "#94e2d5",
+    "blue": "#89b4fa",
+    "magenta": "#cba6f7",
+    "black": "#181825",
+    "add": "#323c3f",
+    "add_dim": "#292e37",
+    "add_word": "#546d5c",
+    "del": "#3e2e40",
+    "del_dim": "#2f2738",
+    "del_word": "#734a5f"
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "name": "Solarized Light",
+  "slug": "solarized-light",
+  "mode": "light",
+  "p": {
+    "bg": "#fdf6e3", "bg_dark": "#eee8d5", "bg_float": "#f5eedc", "bg_hl": "#e8e1cc", "sel": "#ddd6c1", "border": "#d3cbb7",
+    "fg": "#586e75", "fg_dark": "#657b83", "comment": "#93a1a1", "dim": "#93a1a1",
+    "red": "#dc322f", "orange": "#cb4b16", "yellow": "#b58900", "green": "#859900", "teal": "#2aa198", "cyan": "#2aa198", "blue": "#268bd2", "magenta": "#d33682",
+    "black": "#073642", "add": "#e0e8c8", "add_dim": "#ebf0d6", "add_word": "#bfd08a", "del": "#f3d6cf", "del_dim": "#f7e4de", "del_word": "#e8a79c"
+  }
+}

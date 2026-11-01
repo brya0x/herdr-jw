@@ -1,10 +1,32 @@
 {
   "name": "Tokyo Night",
   "slug": "tokyo-night",
+  "mode": "dark",
   "p": {
-    "bg": "#1a1b26", "bg_dark": "#16161e", "bg_float": "#1f2335", "bg_hl": "#292e42", "sel": "#283457", "border": "#3b4261",
-    "fg": "#c0caf5", "fg_dark": "#a9b1d6", "comment": "#565f89", "dim": "#414868",
-    "red": "#f7768e", "orange": "#ff9e64", "yellow": "#e0af68", "green": "#9ece6a", "teal": "#1abc9c", "cyan": "#7dcfff", "blue": "#7aa2f7", "magenta": "#bb9af7",
-    "black": "#15161e", "add": "#20303b", "add_dim": "#1b2a33", "add_word": "#2c5a4a", "del": "#37222c", "del_dim": "#2b1b23", "del_word": "#7a3347"
+    "bg": "#1a1b26",
+    "bg_dark": "#16161e",
+    "bg_float": "#1f2335",
+    "bg_hl": "#292e42",
+    "sel": "#283457",
+    "border": "#3b4261",
+    "fg": "#c0caf5",
+    "fg_dark": "#a9b1d6",
+    "comment": "#565f89",
+    "dim": "#414868",
+    "red": "#f7768e",
+    "orange": "#ff9e64",
+    "yellow": "#e0af68",
+    "green": "#9ece6a",
+    "teal": "#1abc9c",
+    "cyan": "#7dcfff",
+    "blue": "#7aa2f7",
+    "magenta": "#bb9af7",
+    "black": "#15161e",
+    "add": "#20303b",
+    "add_dim": "#1b2a33",
+    "add_word": "#2c5a4a",
+    "del": "#37222c",
+    "del_dim": "#2b1b23",
+    "del_word": "#7a3347"
   }
 }

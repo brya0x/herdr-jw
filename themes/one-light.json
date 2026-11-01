@@ -1,0 +1,32 @@
+{
+  "name": "One Light",
+  "slug": "one-light",
+  "mode": "light",
+  "p": {
+    "bg": "#fafafa",
+    "bg_dark": "#f0f0f1",
+    "bg_float": "#e5e5e6",
+    "bg_hl": "#dbdbdc",
+    "sel": "#d1ddf8",
+    "border": "#c3c3c5",
+    "fg": "#383a42",
+    "fg_dark": "#55575e",
+    "comment": "#a0a1a7",
+    "dim": "#c4c5c8",
+    "red": "#e45649",
+    "orange": "#d26d25",
+    "yellow": "#c18401",
+    "green": "#50a14f",
+    "teal": "#0184bc",
+    "cyan": "#0184bc",
+    "blue": "#4078f2",
+    "magenta": "#a626a4",
+    "black": "#383a42",
+    "add": "#d8e8d8",
+    "add_dim": "#ecf3ec",
+    "add_word": "#b6d6b6",
+    "del": "#f6d9d7",
+    "del_dim": "#f8edec",
+    "del_word": "#f1b8b3"
+  }
+}

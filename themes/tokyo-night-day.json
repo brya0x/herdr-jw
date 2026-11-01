@@ -1,0 +1,11 @@
+{
+  "name": "Tokyo Night Day",
+  "slug": "tokyo-night-day",
+  "mode": "light",
+  "p": {
+    "bg": "#e1e2e7", "bg_dark": "#d0d5e3", "bg_float": "#e9e9ed", "bg_hl": "#c4c8da", "sel": "#b7c1e3", "border": "#a8aecb",
+    "fg": "#3760bf", "fg_dark": "#6172b0", "comment": "#848cb5", "dim": "#a1a6c5",
+    "red": "#f52a65", "orange": "#b15c00", "yellow": "#8c6c3e", "green": "#587539", "teal": "#118c74", "cyan": "#007197", "blue": "#2e7de9", "magenta": "#9854f1",
+    "black": "#b4b5b9", "add": "#c8dec4", "add_dim": "#d6e6d3", "add_word": "#9fc89a", "del": "#e8c9d1", "del_dim": "#eed9df", "del_word": "#e59aa8"
+  }
+}

@@ -1,0 +1,32 @@
+{
+  "name": "Gruvbox Light",
+  "slug": "gruvbox-light",
+  "mode": "light",
+  "p": {
+    "bg": "#fbf1c7",
+    "bg_dark": "#f2e5bc",
+    "bg_float": "#ebdbb2",
+    "bg_hl": "#d5c4a1",
+    "sel": "#c5d2b6",
+    "border": "#beaf91",
+    "fg": "#3c3836",
+    "fg_dark": "#59544c",
+    "comment": "#7c6f64",
+    "dim": "#afa38c",
+    "red": "#9d0006",
+    "orange": "#a93b0d",
+    "yellow": "#b57614",
+    "green": "#79740e",
+    "teal": "#427b58",
+    "cyan": "#427b58",
+    "blue": "#076678",
+    "magenta": "#8f3f71",
+    "black": "#3c3836",
+    "add": "#e1d8a2",
+    "add_dim": "#f1e7b8",
+    "add_word": "#c7bf7d",
+    "del": "#e8c1a0",
+    "del_dim": "#f3deb8",
+    "del_word": "#d5917a"
+  }
+}

@@ -1,6 +1,6 @@
 import { View, div, svg } from "gpui-kit";
 import { h_flex } from "gpui-base";
-import { spaces, agents, panes, setAgentOrder, nextCommand, run, hc, openOverlay, readTextFile, appHome, theme, window, shared, setShared, layout, settings } from "herdr";
+import { spaces, agents, panes, setAgentOrder, nextCommand, run, hc, exec, openOverlay, readTextFile, appHome, theme, window, shared, setShared, layout, settings } from "herdr";
 import { parse, pick, count, prompt, pathFor, MAX_LAPS } from "./tasks-lib.js";
 
 function find(node, id) {
@@ -27,6 +27,7 @@ export default class Tabs extends View {
       }
     });
     cx.timer.every(2000, (cx) => this.tick(cx));
+    cx.timer.every(3000, (cx) => this.followSystem(cx));
     this.panels = JSON.parse(localStorage.getItem("panels") ?? "{}");
   }
 
@@ -60,6 +61,20 @@ export default class Tabs extends View {
 
   // The task loop: when an agent ends a turn (working -> idle/done) in a space whose loop is on, give it the next task.
   // shortcut: a turn shorter than the 2 s poll is missed and stalls the loop, turn the loop off and on to kick it.
+  // Theme mode "system" (themes-jw): Herdr flips light/dark by itself; Claude Code's theme follows when it does (and once at start).
+  followSystem(cx) {
+    const hex = (theme().background ?? "#000000").slice(1);
+    const light = [0, 2, 4].reduce((n, i) => n + parseInt(hex.slice(i, i + 2), 16), 0) / 3 > 127;
+    if (light === this.light) return;
+    this.light = light;
+    cx.spawn(async () => {
+      try {
+        const dir = `${appHome()}/data`;
+        if (JSON.parse((await readTextFile(`${dir}/jw-theme.json`)) ?? "{}").mode === "system") await exec("python3", [`${dir}/jw-themes/use.py`, "apply"]);
+      } catch { /* no jw themes installed, or no state yet */ }
+    });
+  }
+
   tick(cx) {
     if (this.busy) return;
     this.busy = true;

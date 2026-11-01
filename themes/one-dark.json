@@ -1,0 +1,32 @@
+{
+  "name": "One Dark",
+  "slug": "one-dark",
+  "mode": "dark",
+  "p": {
+    "bg": "#282c34",
+    "bg_dark": "#21252b",
+    "bg_float": "#2c313a",
+    "bg_hl": "#3e4451",
+    "sel": "#35495d",
+    "border": "#4e5462",
+    "fg": "#abb2bf",
+    "fg_dark": "#979eaa",
+    "comment": "#5c6370",
+    "dim": "#474d58",
+    "red": "#e06c75",
+    "orange": "#e29678",
+    "yellow": "#e5c07b",
+    "green": "#98c379",
+    "teal": "#56b6c2",
+    "cyan": "#56b6c2",
+    "blue": "#61afef",
+    "magenta": "#c678dd",
+    "black": "#21252b",
+    "add": "#39433e",
+    "add_dim": "#31383a",
+    "add_word": "#556850",
+    "del": "#44363e",
+    "del_dim": "#373139",
+    "del_word": "#72464e"
+  }
+}
