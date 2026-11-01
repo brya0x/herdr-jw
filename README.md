@@ -86,6 +86,15 @@ más que el límite de 10 minutos de la herramienta Bash: córrelo con `run_in_b
 Guarda hasta 20 versiones en `data/artifacts/`. No hay visor embebido: Abrir usa la app del sistema.
 También `ls`, `wait` y `rm`.
 
+### Plugin `jw` (`plugins/jw`)
+
+Skills de Claude Code para las sesiones de jw, con el prefijo `jw:`. Hoy solo `jw:tasks` (llevar un plan hasta el final con `jw tasks`).
+
+```sh
+claude plugin marketplace add brya0x/herdr-jw
+claude plugin install jw@herdr-jw
+```
+
 ### Temas para Herdr y Claude Code (`themes/` + `mods/themes-jw`)
 
 Diez temas (One, Catppuccin, Tokyo Night, Gruvbox y Solarized, cada uno oscuro y claro) con una sola paleta por
