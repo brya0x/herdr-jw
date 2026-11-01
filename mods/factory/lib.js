@@ -8,6 +8,9 @@ const SCRIPTS = () => `${appHome()}/mods/factory`;
 const sh = (script, ...args) => exec("sh", ["-c", script, "sh", ...args]);
 export const exists = async (path) => (await sh('[ -e "$1" ] || [ -L "$1" ]', path)).code === 0;
 
+// Where a workspace keeps a repo: <folder>/repos/<name> (worktrees go to <folder>/worktrees/<repo>/<branch folder>).
+const repoDir = (folder, name) => `${folder}/repos/${name}`;
+
 // The repos of a workspace: <folder>/.factory.json = { repos: [{ name, kind: "gh" | "dir", id?, path? }] }.
 export async function readManifest(folder) {
   const text = await readTextFile(`${folder}/.factory.json`);
@@ -18,7 +21,7 @@ const writeManifest = (folder, repos, prev) => writeTextFile(`${folder}/.factory
 
 // One repo's state on disk: { state: cloning | failed | missing | git | dir, real, branch, dirty, msg }.
 export async function probe(folder, repo) {
-  const out = (await exec("sh", [`${SCRIPTS()}/probe.sh`, `${folder}/${repo.name}`])).stdout;
+  const out = (await exec("sh", [`${SCRIPTS()}/probe.sh`, repoDir(folder, repo.name)])).stdout;
   const r = {};
   for (const line of out.split("\n")) {
     const at = line.indexOf(" ");
@@ -37,10 +40,10 @@ export async function addRepo(folder, repo) {
   if (m.bad) throw new Error(".factory.json no es JSON válido");
   if (!NAME.test(repo.name)) throw new Error(`nombre no válido: ${repo.name}`);
   if (m.repos.some((r) => r.name === repo.name)) throw new Error(`ya hay un repo llamado «${repo.name}»`);
-  const dst = `${folder}/${repo.name}`;
+  const dst = repoDir(folder, repo.name);
   if ((await exists(dst)) || (await exists(`${dst}.part`))) throw new Error(`ya existe ${dst}`);
   if (repo.kind === "dir") {
-    if ((await sh('[ -d "$1" ] && ln -s "$1" "$2"', repo.path, dst)).code !== 0) throw new Error(`no es una carpeta: ${repo.path}`);
+    if ((await sh('[ -d "$1" ] && mkdir -p "$(dirname "$2")" && ln -s "$1" "$2"', repo.path, dst)).code !== 0) throw new Error(`no es una carpeta: ${repo.path}`);
   } else if (!/^[\w.-]+\/[\w.-]+$/.test(repo.id)) throw new Error(`repo no válido: ${repo.id}`);
   try { await writeManifest(folder, [...m.repos, repo], m.text); }
   catch (e) { if (repo.kind === "dir") await sh('[ -L "$1" ] && rm "$1"', dst); throw e; }
@@ -52,10 +55,10 @@ export async function removeRepo(folder, name) {
   const m = await readManifest(folder);
   if (m.bad) throw new Error(".factory.json no es JSON válido");
   await writeManifest(folder, m.repos.filter((r) => r.name !== name), m.text);
-  await sh('[ -L "$1" ] && rm "$1"', `${folder}/${name}`);
+  await sh('[ -L "$1" ] && rm "$1"', repoDir(folder, name));
 }
 
-export const retryClone = (folder, repo) => startClone(repo.id, `${folder}/${repo.name}`);
+export const retryClone = (folder, repo) => startClone(repo.id, repoDir(folder, repo.name));
 
 // A workspace: its folder, an empty manifest, and a space with claude and the repos panel beside it.
 export async function createWorkspace(name) {

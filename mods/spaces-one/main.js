@@ -89,7 +89,7 @@ export default class Spaces extends View {
       for (const folder of folders) {
         try {
           const m = JSON.parse((await readTextFile(`${folder}/.factory.json`)) ?? "null");
-          const git = new Set((m?.repos ?? []).map((r) => `${r.kind === "dir" ? r.path : `${folder}/${r.name}`}/.git`));
+          const git = new Set((m?.repos ?? []).map((r) => `${r.kind === "dir" ? r.path : `${folder}/repos/${r.name}`}/.git`));
           if (git.size && [...git].join() !== [...(this.repos[folder] ?? [])].join()) { this.repos[folder] = git; cx.notify(); }
         } catch { /* no manifest: an ordinary space */ }
       }
