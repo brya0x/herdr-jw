@@ -15,16 +15,16 @@ Luego mezcla `config/keys.json` a mano en `~/.config/herdr-app/keys.json` (el sc
 - añade `"cmd-shift-n": "mod.open:factory"`, `"cmd-shift-u": "mod.open:factory-usage"` y `"cmd-shift-t": "mod.open:factory-tasks"`;
 - quita los atajos `tab.*` (`cmd-t`, `cmd-1..9`, `ctrl-tab`, `f2`...) salvo `cmd-w`.
 
-Activa el layout con `ctrl-shift-l` (o `herdr-app do layout.switch '{"name":"factory"}'`).
+Activa el layout con `herdr-app do layout.switch '{"name":"jw"}'` (ya no hay atajo).
 Para guardar cambios hechos en la config viva: `./sync.sh pull`, y commit.
 
 ## Qué hay
 
 | Pieza | Qué hace |
 |---|---|
-| `layouts/factory.json` | Clon de `main`: sin la sección de agentes, con `tabs-one`. |
+| `layouts/jw.json` | Clon de `main`: sin la sección de agentes, con `tabs-one`. |
 | `mods/tabs-one` | Clon de `tabs` sin pestañas ni `+`: un solo tab por workspace. Deja el nombre, Files, Changes y los botones de ventana. |
-| `mods/factory` | `cmd-shift-n`: pide un nombre, crea `~/ws/<nombre>/`, un space con `claude` y el panel de repos al lado. El panel añade repos de GitHub (`gh repo clone` a `.part`) o carpetas (enlazadas, sin copiar), muestra estado, rama y cambios, y las ramas con su PR (mergeado, CI fallido, con toast). El manifiesto es `<carpeta>/.factory.json`. |
+| `mods/factory` | `cmd-shift-n`: pide un nombre, crea `~/ws/<nombre>/`, un space con `claude` y el panel de repos al lado. El panel añade repos de GitHub (`gh repo clone` a `.part`) o carpetas (enlazadas, sin copiar), muestra estado, rama y cambios, y las ramas con su PR (mergeado, CI fallido, con toast). El manifiesto es `<carpeta>/.factory.json`. El panel (`cmd-shift-v`) tiene cuatro pestañas. **Productividad**: la línea de la fábrica (todos los worktrees por etapa, y a la vez el filtro de la lista), veces que hablaste por PR, tiempo de ciclo (inicio → merge, inicio → PR, PR → merge), PRs por semana, tokens por modelo, agentes ahora y la lista de worktrees con su PR. **Gasto**: consumo, costo medio por PR, uso por modelo, tokens por semana y mayores consumos. **Detecciones** (solo lectura): worktrees cuyo PR tiene el CI fallando, lleva más de 3 días abierto sin merge o se cerró sin mergear; clic abre el worktree. **Repos**: añadir, quitar, crear worktrees. Todo sale de los transcripts de claude (`usage.py` de `factory-usage` y `flow.py`) y de `gh`; los cálculos puros están en `stats.js` (`node test_stats.mjs`). No hay evaluadores (scores): nada los mide todavía. |
 | `mods/worktree-wt` | Clon del mod `worktree` con la creación de jw: lee `.jw.toml` (`root`, `setup`, `copy`, `open`), la carpeta es el último segmento de la rama, valida como jw, corre `setup` antes de abrir, tarea inicial para claude, y avisa de commits sin subir al quitar. Desde el panel de repos los checkouts van a `<workspace>/worktrees/<repo>/<carpeta>` (clonado o enlazado); desde los menús de Herdr, a `<repo>-wt/` según `.jw.toml`. |
 | `mods/factory-tasks` + `skill/herdr-tasks` | `cmd-shift-t`: lista de tareas del workspace (Markdown de jw, en `~/.config/herdr-app/data/tasks/`, una por carpeta) y su bucle: al terminar el turno el agente recibe la siguiente tarea lista (`hc send`), hasta 20 vueltas o hasta que todo esté hecho o una tarea quede bloqueada. El bucle y el contador `n/m` viven en `tabs-one` (que lleva su copia de `lib.js`, `sync.sh push` la mantiene); `sync.sh push` instala el skill en `~/.claude/skills/`. |
 | `mods/factory-usage` | `cmd-shift-u`: costo y tokens por proyecto y por semana, de `~/.claude/projects` (mismas reglas de conteo que `usage.rs` de jw). |

@@ -1,6 +1,6 @@
 import { View, div, svg } from "gpui-kit";
 import { h_flex } from "gpui-base";
-import { spaces, agents, setAgentOrder, run, hc, openOverlay, readTextFile, appHome, theme, window, shared, setShared, layout, settings } from "herdr";
+import { spaces, agents, panes, setAgentOrder, nextCommand, run, hc, openOverlay, readTextFile, appHome, theme, window, shared, setShared, layout, settings } from "herdr";
 import { parse, pick, count, prompt, pathFor, MAX_LAPS } from "./tasks-lib.js";
 
 function find(node, id) {
@@ -15,6 +15,17 @@ function find(node, id) {
 export default class Tabs extends View {
   init(_props, cx) {
     this.prev = {}; this.counts = {};
+    // keys.json: "cmd-shift-v": "tabs-one.repos" opens (or focuses) the repos panel of a factory workspace.
+    cx.spawn(async () => {
+      for (;;) {
+        if ((await nextCommand()) !== "repos") continue;
+        const sp = spaces().find((w) => w.active);
+        if (!sp?.folder || (await readTextFile(`${sp.folder}/.factory.json`)) === null) continue;
+        const open = panes().find((p) => p.mod === "factory" && sp.tabs.some((t) => t.id === p.tab));
+        if (open) run("pane.focus", { pane: open.pane });
+        else run("pane.split", { direction: "right", mod: "factory", props: { view: "repos", folder: sp.folder } });
+      }
+    });
     cx.timer.every(2000, (cx) => this.tick(cx));
     this.panels = JSON.parse(localStorage.getItem("panels") ?? "{}");
   }
