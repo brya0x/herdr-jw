@@ -3,8 +3,8 @@
 
 import { View, div } from "gpui-kit";
 import { v_flex, h_flex, InputState, Input, Scrollbar } from "gpui-base";
-import { run, props, openOverlay, closeOverlay, theme, spaces, panes, exec, home, readTextFile, notify } from "herdr";
-import { parse as parseJw, rootOf, folderOf, validFolder, setupScript } from "./jwtoml.js";
+import { run, props, openOverlay, closeOverlay, theme, spaces, panes, exec, home, appHome, readTextFile, notify } from "herdr";
+import { parse as parseJw, rootOf, folderOf, validFolder, setupScript, shq } from "./jwtoml.js";
 
 // Where a space is now: its first terminal's live folder, else where it was made.
 function place(s) {
@@ -214,8 +214,11 @@ export default class Worktree extends View {
     const claude = this.openMode === "claude" || Boolean(task);
     const setup = setupScript(this.cfg, folder, branch);
     // setup runs first in the pane; claude starts only if it succeeded (a shell stays either way)
+    // A failed setup leaves a line (time, folder, exit code, setup) in the factory panel's log, where Detecciones shows it.
+    const log = shq(`${appHome()}/data/factory/setup-failures.log`);
+    const failed = `c=$?; mkdir -p "$(dirname ${log})" && printf '%s\\t%s\\t%s\\t%s\\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$PWD" "$c" ${shq(setup)} >> ${log}`;
     // Herdr hands `task` over only when argv is claude itself, so behind a setup the task is claude's first argument.
-    const argv = claude ? (setup ? ["sh", "-c", `${setup} && exec claude${task ? ' "$1"' : ""}`, "sh", ...(task ? [task] : [])] : ["claude"]) : setup ? ["sh", "-c", `${setup}; exec "\${SHELL:-/bin/sh}"`] : undefined;
+    const argv = claude ? (setup ? ["sh", "-c", `{ ${setup}; } || { ${failed}; exit $c; }; exec claude${task ? ' "$1"' : ""}`, "sh", ...(task ? [task] : [])] : ["claude"]) : setup ? ["sh", "-c", `{ ${setup}; } || { ${failed}; }; exec "\${SHELL:-/bin/sh}"`] : undefined;
     const p = props();
     // Leave spaces unnamed so they follow the checkout folder and nest under the repo.
     run("space.new", { folder: dest, machine: this.on, tab: p.tab, argv: p.argv ?? argv, ...(task && !setup ? { task } : {}) });

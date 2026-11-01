@@ -1,9 +1,9 @@
 import { div } from "gpui-kit";
 import { v_flex, h_flex } from "gpui-base";
-import { props, theme, openOverlay, notify, exec, spaces, run, appHome } from "herdr";
+import { props, theme, openOverlay, notify, exec, spaces, run, appHome, readTextFile, writeTextFile } from "herdr";
 import { readManifest, probe, removeRepo, retryClone, base } from "./lib.js";
 import { btn } from "./ui.js";
-import { PERIODS, loadUsage, usageOf, show, fmt, detections } from "./usage.js";
+import { PERIODS, loadUsage, usageOf, show, fmt, findings, parseSetupLog } from "./usage.js";
 import { SPIN, productivity, spending, detecciones } from "./dash.js";
 
 const TABS = [["prod", "Productividad"], ["gasto", "Gasto"], ["det", "Detecciones"], ["repos", "Repos"]];
@@ -20,8 +20,14 @@ export class Repos {
     this.tab = "prod"; // prod | gasto | det | repos
     this.kind = "all"; // the worktree filter of the productivity tab
     this.flow = {}; // worktree path -> { first, humans }, from flow.py
+    this.fails = {}; // path -> failed commands, from fails.py
+    this.setupLog = ""; // the lines worktree-wt leaves when a setup fails
+    this.gh = []; // "branch: why" for each worktree gh could not read
+    this.dismissed = []; // ids of the findings the person dropped, kept in data/factory/dismissed.json
+    this.open = null; // the finding whose error is showing
     this.memo = new Map(); // usage sums by paths and period: render runs often, the rows are thousands
     this.refresh(cx);
+    this.loadDismissed();
     this.readUsage(cx);
     cx.timer.every(60000, (cx) => this.readUsage(cx));
     cx.timer.every(4000, (cx) => this.refresh(cx));
@@ -47,7 +53,11 @@ export class Repos {
       try {
         this.usage = await loadUsage(); this.usageError = "";
         const paths = (this.rows ?? []).flatMap((r) => (r.wts ?? []).map((w) => w.path));
+        const all = this.paths();
         if (paths.length) { const f = await exec("python3", ["-I", `${appHome()}/mods/factory/flow.py`, ...paths]); if (f.code === 0) this.flow = JSON.parse(f.stdout); }
+        const x = await exec("python3", ["-I", `${appHome()}/mods/factory/fails.py`, ...all]);
+        if (x.code === 0) this.fails = JSON.parse(x.stdout);
+        this.setupLog = (await readTextFile(`${appHome()}/data/factory/setup-failures.log`)) ?? "";
       } catch (e) { this.usageError = String(e?.message ?? e); }
       this.reading = false;
       this.memo = new Map();
@@ -69,10 +79,11 @@ export class Repos {
     this.polling = true;
     const wts = (this.rows ?? []).flatMap((r) => r.wts ?? []);
     cx.spawn(async (cx) => {
-      const now = {};
+      const now = {}, ghErr = [];
       await Promise.all(wts.map(async (w) => {
         try {
           const r = await exec("gh", ["pr", "list", "--head", w.branch, "--state", "all", "--limit", "1", "--json", "number,state,statusCheckRollup,mergedAt,createdAt"], { cwd: w.path });
+          if (r.code !== 0) ghErr.push(`${w.branch}: ${r.stderr.split("\n").find((l) => l.trim()) ?? `gh salió con código ${r.code}`}`);
           const pr = r.code === 0 ? JSON.parse(r.stdout)[0] : null;
           if (!pr) return;
           const failing = (pr.statusCheckRollup ?? []).some((c) => ["FAILURE", "TIMED_OUT", "STARTUP_FAILURE"].includes(c.conclusion) || ["FAILURE", "ERROR"].includes(c.state));
@@ -87,6 +98,7 @@ export class Repos {
         }
       }
       this.pr = now;
+      this.gh = ghErr;
       this.memo = new Map();
       this.polled = true;
       this.polling = false;
@@ -97,6 +109,39 @@ export class Repos {
   openWt(w) {
     const space = spaces().find((s) => s.folder === w.path);
     run(space ? "space.select" : "space.new", space ? { id: space.id } : { folder: w.path });
+  }
+
+  // Everything that went wrong in this workspace, newest first (see findings in stats.js).
+  found() {
+    return this.once(`F|${this.dismissed.length}`, () => findings({
+      fails: this.fails, setup: parseSetupLog(this.setupLog), paths: this.paths(), dismissed: this.dismissed,
+      repos: this.rows ?? [], gh: this.gh, usageError: this.usageError,
+      labels: Object.fromEntries(this.runs().map((r) => [r.path, r.branch])),
+    }));
+  }
+
+  async loadDismissed() {
+    try { this.dismissed = JSON.parse((await readTextFile(`${appHome()}/data/factory/dismissed.json`)) ?? "[]"); } catch { this.dismissed = []; }
+  }
+
+  dismiss(f, cx) {
+    cx.spawn(async (cx) => {
+      const file = `${appHome()}/data/factory/dismissed.json`;
+      try {
+        const was = await readTextFile(file);
+        const next = [...new Set([...JSON.parse(was ?? "[]"), f.id])];
+        await writeTextFile(file, JSON.stringify(next), was);
+        this.dismissed = next; this.memo = new Map(); this.open = null;
+      } catch (e) { notify({ title: "Detecciones", body: String(e?.message ?? e), level: "error" }); }
+      cx.notify();
+    });
+  }
+
+  // An agent in the folder of the failure, told what failed. In the folder's space when it has one.
+  fix(f) {
+    const space = spaces().find((s) => s.folder === f.path);
+    if (space) { run("space.select", { id: space.id }); run("tab.new", { name: "arreglar", space: space.id, folder: f.path, argv: ["claude"], task: f.task }); }
+    else run("space.new", { name: "arreglar", ...(f.path ? { folder: f.path } : { folder: this.folder }), argv: ["claude"], task: f.task });
   }
 
   act(job, cx) {
@@ -157,7 +202,7 @@ export class Repos {
 
   render() {
     const t = theme();
-    const badge = { gasto: this.usage ? fmt(this.once(`bt|${this.period}|${this.paths().join("|")}`, () => usageOf(this.usage, this.period, this.paths()).tokens)) : "", det: this.polled ? String(detections(this.runs()).length || "") : "", repos: this.rows ? String(this.rows.length) : "" };
+    const badge = { gasto: this.usage ? fmt(this.once(`bt|${this.period}|${this.paths().join("|")}`, () => usageOf(this.usage, this.period, this.paths()).tokens)) : "", det: this.found().length ? String(this.found().length) : "", repos: this.rows ? String(this.rows.length) : "" };
     const on = (k) => this.tab === k;
     return v_flex().id("factory-repos").size_full().bg(t.surface).p(14).gap(12).text_size(13)
       .child(h_flex().items_center().px(2).gap(10)

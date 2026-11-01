@@ -3,7 +3,8 @@
 import { div } from "gpui-kit";
 import { v_flex, h_flex } from "gpui-base";
 import { agents, spaces, run } from "herdr";
-import { PERIODS, usageOf, byModel, weekly, prWeeks, lastWeeks, shipped, kindCounts, detections, DETECTS, inPeriod, inside, fmt, dur, show, KINDS } from "./stats.js";
+import { btn } from "./ui.js";
+import { PERIODS, usageOf, byModel, weekly, prWeeks, lastWeeks, shipped, kindCounts, SOURCES, inPeriod, inside, fmt, dur, show, KINDS } from "./stats.js";
 
 export const SPIN = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
 const famColor = (t, f) => ({ opus: t.ansi5, sonnet: t.ansi4, haiku: t.ansi2 })[f] ?? t.dim;
@@ -13,7 +14,7 @@ const STAGES = ["none", "open", "failed", "merged", "closed"];
 const NAMES = Object.fromEntries(KINDS); // all, open, merged, failed, closed, none -> label
 const barColor = (t, k) => ({ merged: t.ansi5, open: t.ansi4, failed: t.blocked, closed: t.dim })[k] ?? t.border;
 const textColor = (t, k) => ({ merged: t.ansi5, open: t.ansi4, failed: t.blocked, closed: t.dim })[k] ?? t.muted;
-const detColor = (t, k) => ({ failed: t.blocked, stale: t.working })[k] ?? t.dim;
+const srcColor = (t, k) => ({ agente: t.blocked, setup: t.working, fábrica: t.ansi1 ?? t.blocked })[k] ?? t.dim;
 
 const head = (t, title, hint) => h_flex().gap(8).items_center().px(2)
   .child(div().text_size(14).font_semibold().text_color(t.foreground).child(title))
@@ -179,13 +180,21 @@ export function spending(v, t) {
     .child(div().px(2).text_size(11.5).text_color(t.dim).child(rate));
 }
 
-// What needs a person: the worktrees whose PR fails, stalled or was closed. Read-only: click opens the worktree.
+// What went wrong: failures of the agents and of the factory itself (setup, clones, gh). Click a row to read the error;
+// from there an agent can be sent to fix it. Findings come from stats.js `findings`, via v.found().
 export function detecciones(v, t) {
-  if (!v.polled) return note(t, "leyendo los PRs de cada worktree…");
-  const found = detections(v.runs());
-  const hint = { failed: "el CI de su PR falla", stale: "PR abierto hace más de 3 días", closed: "PR cerrado sin mergear" };
+  const found = v.found();
+  const hint = { agente: "comandos que fallaron y nadie arregló", setup: "el setup de un worktree salió con error", fábrica: "repos, gh y lectura del uso" };
   return v_flex().gap(18)
-    .child(h_flex().flex_wrap().gap(20).px(2).children(DETECTS.map(([k, label]) => { const n = found.filter((x) => x.kind === k).length; return stat(t, String(n), label, hint[k], n ? detColor(t, k) : t.dim); })))
-    .child(v_flex().gap(8).child(head(t, "Requieren atención", found.length ? String(found.length) : ""))
-      .child(box(t, ...(found.length ? found.map((x, i) => item(t, `det-${i}`, { icon: div().text_color(detColor(t, x.kind)).child("⚠"), title: x.run.branch, sub: `${x.run.repo} · PR #${x.run.pr.number}${x.age ? ` · hace ${dur(x.age)}` : ""}`, status: DETECTS.find(([k]) => k === x.kind)[1], color: detColor(t, x.kind), onClick: () => v.openWt(x.run) }, i === 0)) : [note(t, "nada por atender: ningún PR falla, está estancado o se cerró sin mergear")]))));
+    .child(h_flex().flex_wrap().gap(20).px(2).children(SOURCES.map(([k, label]) => { const n = found.filter((x) => x.source === k).length; return stat(t, String(n), label, hint[k], n ? srcColor(t, k) : t.dim); })))
+    .child(v_flex().gap(8).child(head(t, "Para revisar", found.length ? `${found.length} · últimos 7 días` : ""))
+      .child(box(t, ...(found.length ? found.flatMap((x, i) => [
+        item(t, `det-${i}`, { icon: div().text_color(srcColor(t, x.source)).child("⚠"), title: x.title, sub: `${x.sub}${x.age ? ` · hace ${dur(x.age)}` : ""}`, status: x.source, color: srcColor(t, x.source), onClick: (_e, cx) => { v.open = v.open === x.id ? null : x.id; cx.notify(); } }, i === 0),
+        ...(v.open === x.id ? [v_flex().px(12).py(10).gap(8).bg(t.hover).border_t(1).border_color(t.border)
+          .child(v_flex().gap(1).children(x.detail.split("\n").slice(0, 14).map((l) => div().text_size(11.5).text_color(t.muted).child(l || " "))))
+          .child(h_flex().gap(6)
+            .child(btn(`fix-${i}`, "Arreglar con un agente", () => v.fix(x), { accent: true }))
+            .when(Boolean(x.path), (el) => el.child(btn(`see-${i}`, "Ver worktree", () => v.openWt({ path: x.path }))))
+            .child(btn(`drop-${i}`, "Descartar", (_e, cx) => v.dismiss(x, cx))))] : []),
+      ]) : [note(t, "nada por revisar: ningún agente terminó fallando y la fábrica está sana")]))));
 }

@@ -1,6 +1,6 @@
 // node test_stats.mjs
 import assert from "node:assert/strict";
-import { isoWeek, lastWeeks, usageOf, byModel, weekly, prWeeks, shipped, perPr, kindCounts, detections, inPeriod, show, dur } from "./stats.js";
+import { isoWeek, lastWeeks, usageOf, byModel, weekly, prWeeks, shipped, perPr, kindCounts, findings, parseSetupLog, inPeriod, show, dur } from "./stats.js";
 
 assert.equal(isoWeek(new Date("2026-10-31T10:00:00Z")), "2026-W44");
 assert.equal(isoWeek(new Date("2026-01-01T00:00:00Z")), "2026-W01");
@@ -37,9 +37,19 @@ assert.equal(perPr(shipped(d, {}, [])), "—");
 
 assert.deepEqual(kindCounts([{ pr: { kind: "open" } }, { pr: { kind: "merged" } }, { pr: null }, {}]), { all: 4, open: 1, merged: 1, failed: 0, closed: 0, none: 2 });
 const now = Date.parse("2026-10-31T00:00:00Z");
-const pr = (kind, created) => ({ pr: { kind, created } });
-const det = detections([pr("closed", "2026-10-01T00:00:00Z"), pr("open", "2026-10-30T00:00:00Z"), pr("open", "2026-10-20T00:00:00Z"), pr("merged", "2026-09-01T00:00:00Z"), { pr: null }, pr("failed", "2026-10-30T00:00:00Z")], now);
-assert.deepEqual(det.map((x) => x.kind), ["failed", "stale", "closed"], "a fresh open PR, a merged one and no PR need nobody; urgent first");
-assert.equal(dur(det[1].age), "11.0 d");
-assert.deepEqual(detections([], now), []);
+assert.deepEqual(parseSetupLog("2026-10-30T10:00:00Z\t/w/a/x\t127\tcomposer install\n\nbad\n"), [{ ts: "2026-10-30T10:00:00Z", folder: "/w/a/x", code: "127", cmd: "composer install" }]);
+const f = findings({
+  now, paths: ["/w/a"], labels: { "/w/a/x": "feat/x" },
+  fails: { "/w/a/x": [{ ts: "2026-10-30T12:00:00Z", cmd: "pnpm test\nmore", err: "Exit code 1\nboom", kind: "pendiente", count: 1 }, { ts: "2026-10-29T12:00:00Z", cmd: "make", err: "Exit code 2\nbad", kind: "repetido", count: 4 }] },
+  setup: [{ ts: "2026-10-30T10:00:00Z", folder: "/w/a/x", code: "1", cmd: "composer install" }, { ts: "2026-10-30T10:00:00Z", folder: "/elsewhere", code: "1", cmd: "no" }, { ts: "2026-09-01T10:00:00Z", folder: "/w/a/y", code: "1", cmd: "old" }],
+  repos: [{ name: "r", state: "failed", msg: "no auth" }, { name: "ok", state: "git" }, { name: "gone", state: "missing", path: "/w/gone" }],
+  gh: ["b1: not logged in", "b2: not logged in"], usageError: "python no está",
+});
+assert.deepEqual(f.map((x) => x.source), ["agente", "setup", "agente", "fábrica", "fábrica", "fábrica", "fábrica"], "newest first; no-time ones last; outside paths and old setup dropped");
+assert.equal(f[0].title, "pnpm test"); assert.equal(f[0].sub, "feat/x · terminó fallando"); assert.equal(f[2].sub, "feat/x · falló 4 veces");
+assert.ok(f[0].task.includes("Exit code 1") && f[0].task.includes("/w/a/x"));
+assert.equal(dur(f[0].age), "12.0 h");
+assert.deepEqual(findings({ now, gh: ["b: x"] }).map((x) => x.title), ["gh falló en 1 worktree"]);
+assert.equal(findings({ now, fails: { "/w": [{ ts: "2026-10-30T00:00:00Z", cmd: "c", err: "e", kind: "pendiente", count: 1 }] }, dismissed: ["agente|/w|c|2026-10-30T00:00:00Z"] }).length, 0, "a dismissed finding stays hidden");
+assert.deepEqual(findings({ now }), []);
 console.log("ok");

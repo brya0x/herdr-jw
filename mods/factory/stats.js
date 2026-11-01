@@ -89,13 +89,39 @@ export function kindCounts(runs) {
   return c;
 }
 
-// What needs a person, from the PRs alone: a failing CI, an open PR nobody merged in 3 days, a PR closed without merging.
-// `runs`: [{ pr: { kind, created } | null, ... }]. Most urgent first.
-export const DETECTS = [["failed", "CI falló"], ["stale", "Estancado"], ["closed", "Cerrado sin merge"]];
-export function detections(runs, now = Date.now()) {
-  const age = (r) => (r.pr.created ? now - Date.parse(r.pr.created) : NaN);
-  const kindOf = (r) => (r.pr?.kind === "failed" ? "failed" : r.pr?.kind === "closed" ? "closed" : r.pr?.kind === "open" && age(r) > 3 * 864e5 ? "stale" : null);
-  return runs.map((run) => ({ run, kind: kindOf(run) })).filter((x) => x.kind)
-    .sort((a, b) => DETECTS.findIndex(([k]) => k === a.kind) - DETECTS.findIndex(([k]) => k === b.kind))
-    .map((x) => ({ ...x, age: x.run.pr.created ? now - Date.parse(x.run.pr.created) : null }));
+// What went wrong and needs a person. Three sources, each a different kind of failure:
+//   "agente"  commands claude failed on and never fixed (fails.py: { path: [{ ts, cmd, err, kind, count }] })
+//   "setup"   a worktree's .jw.toml setup that exited non-zero (parseSetupLog of the log worktree-wt writes)
+//   "fábrica" a repo that did not clone or is gone, `gh` failing, the usage scripts failing
+// Each finding: { id, source, title, sub, detail, ts, age, path, task } where `task` is what an agent is told to fix it.
+export const SOURCES = [["agente", "Agentes"], ["setup", "Setup"], ["fábrica", "Fábrica"]];
+export const parseSetupLog = (text) => (text ?? "").split("\n").filter(Boolean).map((l) => { const [ts, folder, code, ...cmd] = l.split("\t"); return { ts, folder, code, cmd: cmd.join("\t") }; }).filter((x) => x.ts && x.folder);
+
+const first = (text) => String(text).split("\n").find((l) => l.trim())?.trim() ?? "";
+const brief = (text, n) => (first(text).length > n ? `${first(text).slice(0, n - 1)}…` : first(text));
+const ask = (where, what, detail) => `${what}\n\nDónde: ${where}\n\n${detail}\n\nBusca la causa y arréglala. Antes de tocar nada fuera de esa carpeta, cuéntame qué encontraste.`;
+
+export function findings({ fails = {}, setup = [], repos = [], gh = [], usageError = "", labels = {}, paths = null, dismissed = [], now = Date.now() }) {
+  const out = [];
+  const add = (f) => { f.id = `${f.source}|${f.path}|${f.title}|${f.ts ?? ""}`; if (!dismissed.includes(f.id)) out.push({ ...f, age: f.ts ? now - Date.parse(f.ts) : null }); };
+  for (const [path, list] of Object.entries(fails)) for (const f of list) {
+    const where = labels[path] ?? path.split("/").pop();
+    add({ source: "agente", title: brief(f.cmd, 80), sub: `${where} · ${f.kind === "pendiente" ? "terminó fallando" : `falló ${f.count} veces`}`, detail: `$ ${f.cmd}\n\n${f.err}`, ts: f.ts, path,
+      task: ask(path, `Un agente falló en este comando y nadie lo arregló (${f.kind === "pendiente" ? "fue lo último que hizo" : `lo intentó ${f.count} veces`}).`, `Comando:\n${f.cmd}\n\nError:\n${f.err}`) });
+  }
+  for (const x of setup) {
+    if ((paths && !paths.some((p) => inside(x.folder, p))) || now - Date.parse(x.ts) > 14 * 864e5) continue;
+    add({ source: "setup", title: `el setup de ${labels[x.folder] ?? x.folder.split("/").pop()} falló`, sub: `salió con código ${x.code}`, detail: `$ ${x.cmd}\n\nsalió con código ${x.code}`, ts: x.ts, path: x.folder,
+      task: ask(x.folder, `El setup de este worktree (.jw.toml) falló con código ${x.code}, así que el agente no llegó a arrancar.`, `Setup:\n${x.cmd}\n\nReprodúcelo aquí y mira el error.`) });
+  }
+  for (const r of repos) if (r.state === "failed" || r.state === "missing") {
+    const detail = r.state === "failed" ? (r.msg || "el clon falló") : "el repo ya no está en el disco";
+    add({ source: "fábrica", title: `${r.name}: ${r.state === "failed" ? "el clon falló" : "no está en disco"}`, sub: "repo del workspace", detail, ts: null, path: r.path ?? r.real ?? "",
+      task: ask(r.path ?? r.real ?? r.name, `El repo ${r.name} del workspace está roto.`, detail) });
+  }
+  if (gh.length) add({ source: "fábrica", title: `gh falló en ${gh.length} worktree${gh.length > 1 ? "s" : ""}`, sub: "estado de los PRs", detail: gh.slice(0, 8).join("\n"), ts: null, path: "",
+    task: `gh no pudo leer los PRs de algunos worktrees:\n${gh.slice(0, 8).join("\n")}\n\nRevisa si falta login (gh auth status), red o remoto, y dime qué arreglar.` });
+  if (usageError) add({ source: "fábrica", title: "no se pudo leer el uso de claude", sub: "pestañas Productividad y Gasto", detail: usageError, ts: null, path: "",
+    task: `El panel factory no pudo leer los transcripts de claude: ${usageError}\n\nLos scripts están en ~/.config/herdr-app/mods/factory (flow.py, fails.py) y mods/factory-usage/usage.py. Encuentra la causa.` });
+  return out.sort((a, b) => (b.ts ?? "").localeCompare(a.ts ?? ""));
 }

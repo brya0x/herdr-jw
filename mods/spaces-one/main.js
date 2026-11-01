@@ -5,7 +5,7 @@
 
 import { View, div, svg } from "gpui-kit";
 import { v_flex, h_flex } from "gpui-base";
-import { spaces, machines, panes, run, openOverlay, exec, hc, theme, shared, setShared, watchFolder, readTextFile, window, layout } from "herdr";
+import { spaces, machines, panes, nextCommand, run, openOverlay, exec, hc, theme, shared, setShared, watchFolder, readTextFile, window, layout } from "herdr";
 
 function find(node, id) {
   if (node?.id === id) return node;
@@ -65,6 +65,15 @@ export default class Spaces extends View {
     this.folded = new Set(JSON.parse(localStorage.getItem("machines.folded") ?? "[]"));
     this.repos = {}; // factory space folder -> the .git folders of the repos in its .factory.json
     this.loadRepos(cx);
+    // keys.json: "cmd-]": "spaces-one.next", "cmd-[": "spaces-one.prev" walk the sidebar's order (worktrees under their repo), not the raw one space.next uses.
+    cx.spawn(async () => {
+      for (;;) {
+        const c = await nextCommand();
+        if (c !== "next" && c !== "prev") continue;
+        const rows = this.ordered(), at = rows.findIndex((r) => r.w.active);
+        if (rows.length > 1 && at >= 0) run("space.select", { id: rows[(at + (c === "next" ? 1 : rows.length - 1)) % rows.length].w.id });
+      }
+    });
     cx.timer.every(5000, (cx) => this.loadRepos(cx));
     this.refreshMachines(cx);
     cx.timer.every(15000, cx => this.refreshMachines(cx));
