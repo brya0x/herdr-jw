@@ -14,6 +14,7 @@
     "cmd-shift-t": "mod.open:factory-tasks",
     "cmd-shift-v": "tabs-one.repos",
     "cmd-shift-k": "mod.open:themes-jw",
+    "cmd-shift-a": "mod.open:artifacts-jw",
     "cmd-p": "mod.open:picker-one",
     "cmd-shift-p": "app.palette",
     "cmd-,": "app.settings",

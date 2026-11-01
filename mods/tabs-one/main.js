@@ -1,6 +1,6 @@
 import { View, div, svg } from "gpui-kit";
 import { h_flex } from "gpui-base";
-import { spaces, agents, panes, setAgentOrder, nextCommand, run, hc, exec, openOverlay, readTextFile, appHome, theme, window, shared, setShared, layout, settings } from "herdr";
+import { spaces, agents, panes, setAgentOrder, nextCommand, run, hc, exec, notify, watchFolder, openOverlay, readTextFile, appHome, theme, window, shared, setShared, layout, settings } from "herdr";
 import { parse, pick, count, prompt, pathFor, MAX_LAPS } from "./tasks-lib.js";
 
 function find(node, id) {
@@ -28,6 +28,20 @@ export default class Tabs extends View {
     });
     cx.timer.every(2000, (cx) => this.tick(cx));
     cx.timer.every(3000, (cx) => this.followSystem(cx));
+    // An agent published an artifact (artifacts-jw): a toast that opens the panel. artifact.js writes meta.json last.
+    cx.spawn(async () => {
+      const dir = `${appHome()}/data/artifacts`;
+      try {
+        await exec("mkdir", ["-p", dir]);
+        for (;;) {
+          for (const f of await watchFolder(dir)) {
+            if (!f.endsWith("/meta.json")) continue;
+            const m = JSON.parse((await readTextFile(f)) ?? "null");
+            if (m) notify({ title: `Artifact: ${m.title}`, body: `${m.kind} · ${m.space.name}`, action: { name: "mod.open", args: { name: "artifacts-jw" } } });
+          }
+        }
+      } catch { /* no artifacts folder to watch */ }
+    });
     this.panels = JSON.parse(localStorage.getItem("panels") ?? "{}");
   }
 
