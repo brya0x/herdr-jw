@@ -115,3 +115,15 @@ export const validFolder = (f) => f.length > 0 && f.length <= 80 && f !== "." &&
 // A shell word that is safe to paste into a setup line.
 export const shq = (s) => `'${s.replace(/'/g, `'\\''`)}'`;
 export const setupScript = (cfg, name, branch) => cfg.setup.map((l) => l.replaceAll("{name}", shq(name)).replaceAll("{branch}", shq(branch))).join(" && ");
+
+// What the new space's first pane runs, or undefined for a plain shell. setup runs first in the pane; claude starts only if it
+// succeeded (a shell stays either way). A failed setup leaves a line (time, folder, exit code, setup) in `log`, where the factory
+// panel's Detecciones shows it. Herdr hands `task` over only when argv is claude itself, so behind a setup the task is claude's first argument.
+export function paneArgv({ setup, claude, task, log }) {
+  if (!setup) return claude ? ["claude"] : undefined;
+  const l = shq(log);
+  const failed = `c=$?; mkdir -p "$(dirname ${l})" && printf '%s\\t%s\\t%s\\t%s\\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$PWD" "$c" ${shq(setup)} >> ${l}`;
+  return claude
+    ? ["sh", "-c", `{ ${setup}; } || { ${failed}; exit $c; }; exec claude${task ? ' "$1"' : ""}`, "sh", ...(task ? [task] : [])]
+    : ["sh", "-c", `{ ${setup}; } || { ${failed}; }; exec "\${SHELL:-/bin/sh}"`];
+}
