@@ -5,7 +5,7 @@
 
 import { View, div, svg } from "gpui-kit";
 import { v_flex, h_flex } from "gpui-base";
-import { spaces, machines, panes, nextCommand, run, openOverlay, exec, hc, theme, shared, setShared, watchFolder, readTextFile, window, layout } from "herdr";
+import { spaces, machines, panes, nextCommand, run, openOverlay, exec, hc, theme, shared, setShared, watchFolder, readTextFile, appHome, window, layout } from "herdr";
 
 function find(node, id) {
   if (node?.id === id) return node;
@@ -65,13 +65,25 @@ export default class Spaces extends View {
     this.folded = new Set(JSON.parse(localStorage.getItem("machines.folded") ?? "[]"));
     this.repos = {}; // factory space folder -> the .git folders of the repos in its .factory.json
     this.loadRepos(cx);
+    // Groups of repos (group.js writes data/groups/groups.json): { groups: [{id, name}], grouped: { repo's .git folder (or the folder): group id } }
+    this.groups = { groups: [], grouped: {} };
+    this.gfolded = new Set(JSON.parse(localStorage.getItem("groups.folded") ?? "[]"));
+    cx.spawn(async (cx) => {
+      const dir = `${appHome()}/data/groups`;
+      await exec("mkdir", ["-p", dir]);
+      for (;;) {
+        try { const g = JSON.parse((await readTextFile(`${dir}/groups.json`)) ?? "null"); this.groups = { groups: g?.groups ?? [], grouped: g?.grouped ?? {} }; } catch { /* half-written: the next change reloads it */ }
+        cx.notify();
+        await watchFolder(dir);
+      }
+    });
     // keys.json: "cmd-]": "spaces-one.next", "cmd-[": "spaces-one.prev" walk the sidebar's order (worktrees under their repo), not the raw one space.next uses.
     cx.spawn(async () => {
       for (;;) {
         const c = await nextCommand();
         if (c !== "next" && c !== "prev") continue;
-        const rows = this.ordered(), at = rows.findIndex((r) => r.w.active);
-        if (rows.length > 1 && at >= 0) run("space.select", { id: rows[(at + (c === "next" ? 1 : rows.length - 1)) % rows.length].w.id });
+        const rows = this.ordered().filter((r) => !r.hidden), at = rows.findIndex((r) => r.w.active); // not the ones inside a folded group
+        if (rows.length > 1 || (rows.length && at < 0)) run("space.select", { id: rows[at < 0 ? (c === "next" ? 0 : rows.length - 1) : (at + (c === "next" ? 1 : rows.length - 1)) % rows.length].w.id });
       }
     });
     cx.timer.every(5000, (cx) => this.loadRepos(cx));
@@ -249,7 +261,36 @@ export default class Spaces extends View {
       }
       kids.forEach((k, n) => out.push({ ...k, tree: n === kids.length - 1 ? "└─" : "├─" }));
     }
+    // Groups: each space with its worktrees (a block) goes to its group's place, in the group's order; the ungrouped last.
+    const { groups, grouped } = this.groups;
+    if (!groups.length) return out;
+    const blocks = [];
+    for (const r of out) { if (!r.tree) blocks.push([]); blocks[blocks.length - 1].push(r); }
+    const idOf = (b) => { const id = grouped[b[0].g ? JSON.parse(b[0].g.repo)[1] : JSON.parse(where(b[0].w, ps))[1]]; return groups.some((g) => g.id === id) ? id : null; };
+    const tagged = blocks.map((b) => ({ b, id: idOf(b) }));
+    return [...groups.map((g) => g.id), null].flatMap((id) => tagged.filter((x) => x.id === id).flatMap(({ b }) => b.map((r) => ({ ...r, group: id, hidden: this.gfolded.has(id) }))));
+  }
+
+  // rows with a heading where the group changes (once there are groups); a folded group's rows stay out of sight
+  listed(rows, draw, t, collapsed) {
+    if (!this.groups.groups.length) return rows.map(draw);
+    const out = []; let last;
+    for (const r of rows) {
+      if (r.group !== last) { last = r.group; out.push(this.groupHead(last, t, collapsed)); }
+      if (!r.hidden) out.push(draw(r));
+    }
     return out;
+  }
+
+  groupHead(id, t, collapsed) {
+    const name = id ? this.groups.groups.find((g) => g.id === id)?.name : "sin grupo", folded = id && this.gfolded.has(id);
+    return h_flex().id(`group-${id ?? "none"}`).h(26).flex_none().px(collapsed ? 2 : 8).gap(6).items_center().text_size(11).text_color(t.dim)
+      .when(Boolean(id), (el) => el.cursor_pointer().hover((s) => s.bg(t.hover)).on_click((_e, cx) => {
+        folded ? this.gfolded.delete(id) : this.gfolded.add(id);
+        localStorage.setItem("groups.folded", JSON.stringify([...this.gfolded]));
+        cx.notify();
+      }))
+      .child(collapsed ? (folded ? "▸" : "▾") : div().flex_1().truncate().child(`${id ? (folded ? "▸ " : "▾ ") : ""}${name}`));
   }
 
   // The rows, under a header per machine once one isn't this computer.
@@ -263,7 +304,7 @@ export default class Spaces extends View {
         || spaces().some(s => (s.machine ?? null) === m && !this.shown.has(s.id));
     };
     const loadingRow = m => div().id(`machine-loading-${m ?? "local"}`).h(28).flex_none().px(8).text_size(12).text_color(t.dim).child(collapsed ? "…" : "Loading…");
-    if (!remote.length) return loading(null) && !rows.length ? [loadingRow(null)] : rows.map(draw);
+    if (!remote.length) return loading(null) && !rows.length ? [loadingRow(null)] : this.listed(rows, draw, t, collapsed);
     const machineNames = [null, ...remote];
     return machineNames.flatMap((m) => {
       const mine = rows.filter((r) => (r.w.machine ?? null) === m);
@@ -288,7 +329,7 @@ export default class Spaces extends View {
         .text_size(12).text_color(t.dim).hover(s => s.bg(t.hover).text_color(t.foreground))
         .on_click(() => run("space.new", m ? { machine: m } : {}))
         .child(svg("mods/workspace-chrome/plus.svg").size(12)).when(!collapsed, el => el.child("New space there"));
-      return [head, ...(folded ? [] : mine.length ? mine.map(draw) : [loading(m) ? loadingRow(m) : empty])];
+      return [head, ...(folded ? [] : mine.length ? this.listed(mine, draw, t, collapsed) : [loading(m) ? loadingRow(m) : empty])];
     });
   }
 
