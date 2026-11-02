@@ -1,6 +1,6 @@
 // cmd-shift-k: the jw themes (the palettes sync.sh push installs in data/jw-themes). Top: full light, full dark, or follow the
 // system. Below: pick the dark and the light theme (the one in use shows "en uso"). Up/down + Enter or a click choose, left/right
-// change the mode, Esc leaves. use.py does the work for Herdr and Claude Code; claudes already open keep theirs until /theme.
+// change the mode, Esc leaves. use.py does the work for Herdr and Claude Code; idle claudes already open get it too (use.py live: /theme, or a restart with --resume).
 import { View, div } from "gpui-kit";
 import { v_flex, h_flex } from "gpui-base";
 import { exec, theme, props, closeOverlay, notify, appHome, readTextFile } from "herdr";

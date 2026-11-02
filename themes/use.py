@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """use.py mode light|dark|system  |  set <slug>  |  apply : the jw theme in Herdr and Claude Code.
 State is data/jw-theme.json {mode, light, dark}; the palettes are the *.json beside this file."""
-import glob, json, os, re, subprocess, sys
+import glob, json, os, re, shlex, subprocess, sys, time
 import build
 
 STATE = f"{build.H}/data/jw-theme.json"
@@ -38,7 +38,89 @@ def apply(c):
         assert n == 1, "settings.json: expected one top-level theme line"
         return t
     edit(os.path.expanduser("~/.claude/settings.json"), claude)
+    live(c[eff])
     print(f"{c['mode']} ({eff}): light {c['light']}, dark {c['dark']}")
+
+def hc(*a):
+    return subprocess.run(["hc", *a], capture_output=True, text=True, timeout=10).stdout
+
+def screen(t, until):
+    for _ in range(12):
+        s = hc("read", t)
+        if until in s: return s
+        time.sleep(0.25)
+    return s
+
+def status(t):
+    for x in json.loads(hc("ls"))["terminals"]:
+        if x["address"] == t: return x.get("agent"), x.get("status")
+    return None, None
+
+def idle(t, secs=30):
+    for _ in range(secs * 2):
+        if status(t) == ("claude-code", "idle"): return True
+        time.sleep(0.5)
+    return False
+
+def pick(t, name):
+    """Open /theme in claude t and choose `name`. Returns ok | busy (text typed) | missing (the picker does not list it)."""
+    prompt = [l for l in hc("read", t).splitlines() if l.startswith("❯")]
+    if not prompt or prompt[-1].strip() != "❯": return "busy"
+    hc("keys", t, "/", "t", "h", "e", "m", "e", "enter")
+    rows = screen(t, "Enter to select").splitlines()
+    rows = rows[max(i for i, l in enumerate(rows) if "Auto (match terminal)" in l):]
+    rows = [l for l in rows if l.startswith("   ")]
+    norm = lambda l: re.sub(r"^\s*[❯✔\s]*|\s+custom\s*$", "", l)
+    at = [i for i, l in enumerate(rows) if l.lstrip().startswith("❯")]
+    to = [i for i, l in enumerate(rows) if norm(l) == name]
+    if len(at) != 1 or len(to) != 1: hc("keys", t, "esc"); return "missing"
+    d = to[0] - at[0]
+    if d: hc("keys", t, *(["down" if d > 0 else "up"] * abs(d)))
+    hc("keys", t, "enter" if "✔" not in rows[to[0]] or d else "esc")
+    return "ok"
+
+def restart(t):
+    """Exit claude t and bring the same conversation back (claude --resume), so it reads the config again. Where claude ran
+    in a shell the shell stays and gets the command; where claude was the terminal's program (it ends with it) a pane
+    beside it runs the resume and the old pane closes. Returns the terminal that now has claude, or None (nothing lost:
+    the conversation is a transcript, `claude --resume` brings it back). Flags the session was started with (--add-dir...) are not kept: live() leaves such a session alone."""
+    cwd = json.loads(hc("get", t))["cwd"]
+    hc("keys", t, "/", "e", "x", "i", "t", "enter")
+    sid = None
+    for _ in range(20):
+        m = re.findall(r"claude --resume ([0-9a-f-]{36})", hc("read", t))
+        if m: sid = m[-1]; break
+        time.sleep(0.25)
+    if not sid: return None
+    time.sleep(1)
+    if json.loads(hc("get", t))["state"] == "live":  # a shell is left
+        hc("keys", t, *[("space" if ch == " " else ch) for ch in f"claude --resume {sid}"], "enter")
+        return t if idle(t) else None
+    pane = next(x["pane"] for sp in json.loads(subprocess.run(["herdr-app", "ls"], capture_output=True, text=True).stdout)["spaces"]
+                for tb in sp["tabs"] for x in tb["terminals"] if x["terminal"] == t)
+    r = subprocess.run(["herdr-app", "do", "pane.split", json.dumps({"direction": "right", "pane": pane,
+        "argv": ["sh", "-c", f"cd {shlex.quote(cwd)} && exec claude --resume {sid}"]})], capture_output=True, text=True)
+    new = json.loads(r.stdout)
+    if not idle(new["terminal"]): return None
+    subprocess.run(["herdr-app", "do", "pane.close", json.dumps({"pane": pane})], capture_output=True)
+    return new["terminal"]
+
+def live(slug):
+    """Open claudes keep their theme until /theme: for each idle one with an empty prompt, open the picker, move to the
+    theme and press enter. One whose picker does not list the theme (it started before ~/.claude/themes existed) is
+    restarted with its conversation and then asked again. Busy ones and ones with text typed are left alone."""
+    try:
+        name = json.load(open(os.path.expanduser(f"~/.claude/themes/{slug}.json")))["name"]
+        terms = json.loads(hc("ls"))["terminals"]
+    except (OSError, ValueError, KeyError, subprocess.SubprocessError): return
+    for t in (t["address"] for t in terms if t.get("agent") == "claude-code" and t.get("state") == "live" and t.get("status") in ("idle", "done")):
+        try:
+            if pick(t, name) == "missing":
+                if "--add-dir" in " ".join(json.loads(hc("get", t))["argv"]): continue  # --add-dir is lost on resume
+                t = restart(t)
+                if t: pick(t, name)
+        except (subprocess.SubprocessError, ValueError, KeyError, StopIteration):
+            hc("keys", t, "esc")
 
 if __name__ == "__main__":
     a, ps, c = sys.argv[1:], palettes(), load()

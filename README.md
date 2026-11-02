@@ -100,7 +100,7 @@ claude plugin install jw@herdr-jw
 Diez temas (One, Catppuccin, Tokyo Night, Gruvbox y Solarized, cada uno oscuro y claro) con una sola paleta por
 tema, de la que `build.py` saca el tema de Herdr y el de Claude Code (`~/.claude/themes/`). `cmd-shift-k` abre
 el selector: **Claro**, **Oscuro** o **Sistema**, y qué tema oscuro y claro usar. En Sistema, Herdr sigue al
-sistema y el tema de Claude cambia con él. Los claude ya abiertos no recargan el tema hasta `/theme`.
+sistema y el tema de Claude cambia con él. Los claude ya abiertos no recargan el tema solos: al cambiarlo, el selector abre `/theme` en cada claude inactivo con el prompt vacío y elige el tema. Si el `/theme` de uno no lista los temas (se abrió antes de que existiera `~/.claude/themes/`), se reinicia con `claude --resume` y conserva su conversación. Los que están trabajando, los que tienen texto escrito y los lanzados con `--add-dir` se dejan quietos.
 Desde la terminal: `use.py mode light|dark|system`, `set <slug>` y `apply`.
 
 ### Navegación y layout
