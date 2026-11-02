@@ -17,6 +17,26 @@ resultados desde un panel y ves cuánto cuesta y cuánto tarda cada PR. Sin la a
     └── api/fix-login/         una rama, con su setup ya corrido
 ```
 
+## Estructura del repo
+
+Ordenada por quién consume cada cosa:
+
+```
+install.sh  sync.sh  README.md
+.claude-plugin/marketplace.json    marketplace del plugin (tiene que estar en la raíz)
+herdr/                             lo que carga Herdr
+├── mods/                          factory, factory-tasks, worktree-wt, tabs-one, picker-one, spaces-one, jw-settings, artifacts-jw
+├── layouts/                       jw.json
+└── config/                        keys.json (atajos)
+claude/                            lo que carga Claude Code
+├── plugins/jw/                    jw:tasks, jw:role
+└── skills/                        herdr-tasks
+internals/
+└── themes/                        paletas y scripts que sirven a Herdr y a Claude Code a la vez
+```
+
+`install.sh` y `sync.sh` copian a `~/.config/herdr-app` y a `~/.claude`; esas rutas no cambian.
+
 ## Instalar
 
 ```sh
@@ -38,7 +58,7 @@ en la config viva: `./sync.sh pull`, y commit.
 
 ## Qué trae
 
-### Workspaces como fábrica (`mods/factory`)
+### Workspaces como fábrica (`herdr/mods/factory`)
 
 `cmd-shift-n` pide un nombre, crea `~/ws/<nombre>/` y abre un space con `claude` y el panel de repos al lado.
 El panel añade repos de GitHub (`gh repo clone`, sin dejar clones a medias) o carpetas (enlazadas, sin copiar),
@@ -55,26 +75,26 @@ El panel (`cmd-shift-v`) tiene cuatro pestañas:
 
 Todo sale de los transcripts de claude y de `gh`. No hay evaluadores (scores): nada los mide todavía.
 
-### Worktrees como jw (`mods/worktree-wt`)
+### Worktrees como jw (`herdr/mods/worktree-wt`)
 
 Lee el `.jw.toml` del repo (`root`, `setup`, `copy`, `open`), pone la carpeta en el último segmento de la rama,
 valida como jw, corre `setup` antes de abrir, puede pasarle una tarea inicial a claude y avisa de commits sin
 subir al quitar. Desde la terminal:
 
 ```sh
-bun mods/worktree-wt/wt.js <rama> [--in <repo>] [--branch b] [--from ref] [--open shell|claude] [--task texto]
+bun herdr/mods/worktree-wt/wt.js <rama> [--in <repo>] [--branch b] [--from ref] [--open shell|claude] [--task texto]
 ```
 
 Los repos de un workspace van a `<workspace>/worktrees/<repo>/<carpeta>`; los demás, a `<repo>-wt/` según
 `.jw.toml`.
 
-### Tareas con bucle (`mods/factory-tasks` + `skill/herdr-tasks`)
+### Tareas con bucle (`herdr/mods/factory-tasks` + `claude/skills/herdr-tasks`)
 
 `cmd-shift-t` abre la lista de tareas del workspace (Markdown de jw, una por carpeta). Al terminar el turno el
 agente recibe la siguiente tarea lista, hasta 20 vueltas o hasta que todo esté hecho o una tarea quede
 bloqueada. El contador `n/m` se ve en la barra. El skill `herdr-tasks` enseña al agente a escribir su plan ahí.
 
-### Artifacts por aprobar (`mods/artifacts-jw`)
+### Artifacts por aprobar (`herdr/mods/artifacts-jw`)
 
 Un agente publica un `.html` o `.md` y se queda esperando tu decisión:
 
@@ -88,7 +108,7 @@ más que el límite de 10 minutos de la herramienta Bash: córrelo con `run_in_b
 Guarda hasta 20 versiones en `data/artifacts/`. No hay visor embebido: Abrir usa la app del sistema.
 También `ls`, `wait` y `rm`.
 
-### Plugin `jw` (`plugins/jw`)
+### Plugin `jw` (`claude/plugins/jw`)
 
 Skills de Claude Code, con el prefijo `jw:`:
 
@@ -102,7 +122,7 @@ claude plugin install jw@herdr-jw
 
 `install.sh` ya hace esto; las sesiones abiertas lo cargan con `/reload-plugins`.
 
-### Temas para Herdr y Claude Code (`themes/` + `mods/jw-settings`)
+### Temas para Herdr y Claude Code (`internals/themes/` + `herdr/mods/jw-settings`)
 
 Diez temas (One, Catppuccin, Tokyo Night, Gruvbox y Solarized, cada uno oscuro y claro) con una sola paleta por
 tema, de la que `build.py` saca el tema de Herdr y el de Claude Code (`~/.claude/themes/`). `cmd-shift-j` abre
@@ -112,11 +132,11 @@ Desde la terminal: `use.py mode light|dark|system`, `set <slug>` y `apply`.
 
 ### Navegación y layout
 
-- `layouts/jw.json`: clon de `main` sin la sección de agentes, con `tabs-one`.
-- `mods/tabs-one`: sin pestañas ni `+`, un solo tab por workspace; deja el nombre, Files, Changes y los botones de ventana.
-- `mods/spaces-one`: los worktrees cuelgan de su repo (o del workspace que lista ese repo), y `cmd-]` / `cmd-[` recorren los spaces en el orden del sidebar.
-- `mods/picker-one`: selector de tabs y spaces (`cmd-p`).
-- `mods/jw-settings` (`cmd-shift-j`): una sola pantalla con lista a la izquierda, como los Settings de Herdr. **Tema** (claro, oscuro o sistema, y qué tema), **Costos** (costo y tokens por proyecto y por semana, de `~/.claude/projects`, mismas reglas de conteo que `usage.rs` de jw) y **Actualizar** (corre el `install.sh` publicado, sin tocar `keys.json`).
+- `herdr/layouts/jw.json`: clon de `main` sin la sección de agentes, con `tabs-one`.
+- `herdr/mods/tabs-one`: sin pestañas ni `+`, un solo tab por workspace; deja el nombre, Files, Changes y los botones de ventana.
+- `herdr/mods/spaces-one`: los worktrees cuelgan de su repo (o del workspace que lista ese repo), y `cmd-]` / `cmd-[` recorren los spaces en el orden del sidebar.
+- `herdr/mods/picker-one`: selector de tabs y spaces (`cmd-p`).
+- `herdr/mods/jw-settings` (`cmd-shift-j`): una sola pantalla con lista a la izquierda, como los Settings de Herdr. **Tema** (claro, oscuro o sistema, y qué tema), **Costos** (costo y tokens por proyecto y por semana, de `~/.claude/projects`, mismas reglas de conteo que `usage.rs` de jw) y **Actualizar** (corre el `install.sh` publicado, sin tocar `keys.json`).
 
 ## Atajos
 
@@ -131,7 +151,7 @@ Desde la terminal: `use.py mode light|dark|system`, `set <slug>` y `apply`.
 | `cmd-shift-j` | Pantalla de jw: Tema, Costos y Actualizar (`Tab` o `1`-`3` cambian de sección) |
 | `cmd-p` | Selector de tabs y spaces |
 
-Todos salen de `config/keys.json`.
+Todos salen de `herdr/config/keys.json`.
 
 ## Tarifas
 
@@ -149,16 +169,16 @@ El costo muestra «sin tarifa» hasta que escribas `~/.config/herdr-app/data/fac
 ## Pruebas
 
 ```sh
-bun mods/worktree-wt/jwtoml.test.js     # lee .jw.toml reales de un repo tuyo: la ruta está al inicio del test
-bun mods/artifacts-jw/artifact.test.js
-bun mods/factory-tasks/lib.test.js
-node mods/factory/test_stats.mjs
-python3 mods/factory/test_fails.py
-python3 mods/factory/test_flow.py
-python3 -I mods/jw-settings/test_usage.py
+bun herdr/mods/worktree-wt/jwtoml.test.js     # lee .jw.toml reales de un repo tuyo: la ruta está al inicio del test
+bun herdr/mods/artifacts-jw/artifact.test.js
+bun herdr/mods/factory-tasks/lib.test.js
+node herdr/mods/factory/test_stats.mjs
+python3 herdr/mods/factory/test_fails.py
+python3 herdr/mods/factory/test_flow.py
+python3 -I herdr/mods/jw-settings/test_usage.py
 ```
 
-`herdr-app check mods/<nombre>` solo dibuja el estado inicial: mira siempre `herdr-app shot`.
+`herdr-app check herdr/mods/<nombre>` solo dibuja el estado inicial: mira siempre `herdr-app shot`.
 Sin probar con clics: el selector shell/claude y el campo de tarea del diálogo, los botones del panel de
 artifacts, los avisos de PR mergeado y CI fallido.
 Claude pregunta «¿confías en esta carpeta?» en una carpeta nueva; si pasa en cada worktree, la tarea espera a que aceptes.

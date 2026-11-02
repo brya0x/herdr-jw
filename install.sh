@@ -25,7 +25,7 @@ echo "herdr-jw: mods, layout, themes and the herdr-tasks skill are in $H"
 
 # Add our shortcuts to keys.json; drop the tab.* ones (there are no tabs) and the ones of mods that jw-settings replaced. Keep a backup if it changes.
 if [ "$KEYS" = 1 ] && [ -f "$H/keys.json" ]; then
-  python3 - "$H/keys.json" "$T/config/keys.json" <<'PY'
+  python3 - "$H/keys.json" "$T/herdr/config/keys.json" <<'PY'
 import json, shutil, sys, time
 path, ours = sys.argv[1:]
 cur = json.load(open(path)); new = json.load(open(ours))

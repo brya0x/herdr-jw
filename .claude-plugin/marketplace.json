@@ -2,6 +2,6 @@
   "name": "herdr-jw",
   "owner": { "name": "Bryan Astacio" },
   "plugins": [
-    { "name": "jw", "description": "Skills for working inside a jw session.", "source": "./plugins/jw" }
+    { "name": "jw", "description": "Skills for working inside a jw session.", "source": "./claude/plugins/jw" }
   ]
 }
