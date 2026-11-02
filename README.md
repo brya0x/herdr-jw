@@ -92,7 +92,7 @@ También `ls`, `wait` y `rm`.
 Skills de Claude Code, con el prefijo `jw:`:
 
 - `jw:tasks`: llevar un plan hasta el final con `jw tasks`.
-- `jw:role`: `/jw:role <rol>` pone a la sesión en un rol (`brain`, el orquestador que reparte el trabajo en worktrees; `researcher`, solo lectura con fuentes). Los roles son archivos `<nombre>.md` en tres capas, y gana la más cercana al proyecto: `.claude/roles/`, `~/.claude/roles/` y los del plugin. Los del plugin usan las herramientas de Herdr (`hc`, `wt.js`, `artifact.js`), no las de jw; un `brain.md` en `~/.claude/roles/` los tapa.
+- `jw:role`: `/jw:role <rol>` pone a la sesión en un rol (`herdr-brain`, el orquestador que reparte el trabajo en worktrees; `herdr-researcher`, solo lectura con fuentes). Los roles son archivos `<nombre>.md` en tres capas, y gana la más cercana al proyecto: `.claude/roles/`, `~/.claude/roles/` y los del plugin. Los del plugin usan las herramientas de Herdr (`hc`, `wt.js`, `artifact.js`) y llevan el prefijo `herdr-` para que los `brain` y `researcher` de jw en `~/.claude/roles/` no los tapen.
 
 ```sh
 claude plugin marketplace add brya0x/herdr-jw

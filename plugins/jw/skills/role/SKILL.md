@@ -14,7 +14,7 @@ gana la más cercana al proyecto:
 
 1. `.claude/roles/` del proyecto (si existe).
 2. `~/.claude/roles/`.
-3. `roles/` junto a este skill (los que trae el plugin: `brain`, `researcher`). La ruta base del skill
+3. `roles/` junto a este skill (los que trae el plugin: `herdr-brain`, `herdr-researcher`, escritos para Herdr y con otro nombre para que los de jw en `~/.claude/roles/` no los tapen). La ruta base del skill
    te la da el sistema al cargarlo.
 
 ## Qué hacer
@@ -24,7 +24,7 @@ gana la más cercana al proyecto:
    No tomes ninguno.
 2. **Con nombre** (`/jw:role researcher`): lee ese archivo entero, di en **una línea** qué rol tomas y qué
    NO harás en él, y a partir de ahí sigue sus instrucciones en esta sesión. Si lo que viene después del
-   nombre es una tarea (`/jw:role researcher cómo funciona la cola de mensajes`), empieza por ella.
+   nombre es una tarea (`/jw:role herdr-researcher cómo funciona la cola de mensajes`), empieza por ella.
 3. **Nombre que no existe**: no adivines; di cuáles hay.
 4. El rol dura **hasta que la persona lo suelte** («sal del rol», o `/jw:role` con otro nombre). Al
    cambiar, el anterior deja de aplicar.
