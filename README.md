@@ -30,6 +30,7 @@ atajos de abajo y quita los `tab.*`; si cambia algo deja una copia `keys.json.ba
 - `| sh -s -- --no-keys` no toca `keys.json`.
 - `| sh -s -- --no-plugin` no instala el plugin `jw` de Claude Code (si hay `claude`, lo añade desde el marketplace de este repo; volver a correrlo lo actualiza).
 - `HERDR_JW_REF=<rama|tag>` elige la versión. Volver a correrlo actualiza.
+- Para actualizar sin salir de Herdr: `cmd-alt-u` abre un panel que corre esto mismo y muestra lo que imprime. Reinicia Herdr después para cargar los mods nuevos.
 - Reinicia Herdr y activa el layout: `herdr-app do layout.switch '{"name":"jw"}'` (el script no lo cambia solo).
 
 Desde un clon: `./sync.sh push` copia lo mismo sin tocar `keys.json`. Para guardar en el repo lo que cambiaste
@@ -129,6 +130,7 @@ Desde la terminal: `use.py mode light|dark|system`, `set <slug>` y `apply`.
 | `cmd-shift-u` | Costo y tokens por proyecto |
 | `cmd-shift-a` | Artifacts por aprobar |
 | `cmd-shift-k` | Selector de tema |
+| `cmd-alt-u` | Actualizar herdr-jw (corre el `install.sh` publicado, sin tocar `keys.json`) |
 | `cmd-p` | Selector de tabs y spaces |
 
 Todos salen de `config/keys.json`.
