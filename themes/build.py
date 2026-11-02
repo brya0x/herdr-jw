@@ -35,6 +35,12 @@ def put(path, data):
     os.makedirs(os.path.dirname(path), exist_ok=True)
     open(path, "w").write(json.dumps(data, indent=2) + "\n")
 
+def active(slug):
+    """The one Claude theme every session uses (settings.json: custom:jw). Claude Code watches ~/.claude/themes and repaints
+    a running session when this file changes, so a theme change needs no keystrokes in the sessions that already use it."""
+    s = json.load(open(os.path.join(HERE, f"{slug}.json")))
+    put(f"{C}/jw.json", claude({**s, "name": "JW"}, s["p"]))
+
 def main():
     for f in sorted(glob.glob(os.path.join(HERE, "*.json"))):
         s = json.load(open(f)); p = s["p"]; slug = s["slug"]

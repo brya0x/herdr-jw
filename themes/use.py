@@ -25,6 +25,7 @@ def edit(path, fn):
 def apply(c):
     build.main()
     eff = system() if c["mode"] == "system" else c["mode"]
+    build.active(c[eff])
     for slug in (c["light"], c["dark"]):
         subprocess.run(["herdr-app", "do", "app.theme", json.dumps({"name": slug})], capture_output=True)
     def appearance(s):
@@ -34,11 +35,11 @@ def apply(c):
         return json.dumps(d, indent=2, ensure_ascii=False) + "\n"
     edit(os.path.join(build.H, "settings.json"), appearance)
     def claude(s):
-        t, n = re.subn(r'^(  "theme": )".*?"', lambda m: f'{m[1]}"custom:{c[eff]}"', s, flags=re.M)
+        t, n = re.subn(r'^(  "theme": )".*?"', lambda m: f'{m[1]}"custom:jw"', s, flags=re.M)
         assert n == 1, "settings.json: expected one top-level theme line"
         return t
     edit(os.path.expanduser("~/.claude/settings.json"), claude)
-    live(c[eff])
+    live()
     print(f"{c['mode']} ({eff}): light {c['light']}, dark {c['dark']}")
 
 def hc(*a):
@@ -105,22 +106,33 @@ def restart(t):
     subprocess.run(["herdr-app", "do", "pane.close", json.dumps({"pane": pane})], capture_output=True)
     return new["terminal"]
 
-def live(slug):
-    """Open claudes keep their theme until /theme: for each idle one with an empty prompt, open the picker, move to the
-    theme and press enter. One whose picker does not list the theme (it started before ~/.claude/themes existed) is
-    restarted with its conversation and then asked again. Busy ones and ones with text typed are left alone."""
+LIVE = f"{build.H}/data/jw-theme-live.json"  # terminals whose claude already uses the JW theme: they repaint by themselves
+
+def live():
+    """Claude Code repaints a running session when ~/.claude/themes/jw.json changes, but only if the session uses the JW
+    theme. Once per session, switch it with /theme (busy ones too: it opens mid-turn and the turn goes on). A session whose
+    picker does not list JW (it started before ~/.claude/themes existed) is restarted with its conversation, if it is
+    idle. Left alone: text typed, waiting on a permission, and --add-dir ones that need a restart (it is lost on resume)."""
     try:
-        name = json.load(open(os.path.expanduser(f"~/.claude/themes/{slug}.json")))["name"]
-        terms = json.loads(hc("ls"))["terminals"]
-    except (OSError, ValueError, KeyError, subprocess.SubprocessError): return
-    for t in (t["address"] for t in terms if t.get("agent") == "claude-code" and t.get("state") == "live" and t.get("status") in ("idle", "done")):
+        done = set(json.load(open(LIVE)))
+    except (OSError, ValueError): done = set()
+    try: terms = json.loads(hc("ls"))["terminals"]
+    except (ValueError, subprocess.SubprocessError): return
+    now = {x["address"] for x in terms}
+    done &= now
+    for x in terms:
+        t = x["address"]
+        if x.get("agent") != "claude-code" or x.get("state") != "live" or t in done or x.get("status") not in ("idle", "done", "working"): continue
         try:
-            if pick(t, name) == "missing":
-                if "--add-dir" in " ".join(json.loads(hc("get", t))["argv"]): continue  # --add-dir is lost on resume
+            r = pick(t, "JW")
+            if r == "missing" and x["status"] != "working":  # never restart one in the middle of a turn
+                if "--add-dir" in " ".join(json.loads(hc("get", t))["argv"]): continue
                 t = restart(t)
-                if t: pick(t, name)
+                r = pick(t, "JW") if t else r
+            if r == "ok": done.add(t)
         except (subprocess.SubprocessError, ValueError, KeyError, StopIteration):
             hc("keys", t, "esc")
+    open(LIVE, "w").write(json.dumps(sorted(done)) + "\n")
 
 if __name__ == "__main__":
     a, ps, c = sys.argv[1:], palettes(), load()
