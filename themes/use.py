@@ -106,33 +106,33 @@ def restart(t):
     subprocess.run(["herdr-app", "do", "pane.close", json.dumps({"pane": pane})], capture_output=True)
     return new["terminal"]
 
-LIVE = f"{build.H}/data/jw-theme-live.json"  # terminals whose claude already uses the JW theme: they repaint by themselves
+LIVE = f"{build.H}/data/jw-theme-live.json"  # {"done": terminals whose claude uses the JW theme (they repaint by themselves), "skip": ones that cannot be moved}
 
 def live():
     """Claude Code repaints a running session when ~/.claude/themes/jw.json changes, but only if the session uses the JW
     theme. Once per session, switch it with /theme (busy ones too: it opens mid-turn and the turn goes on). A session whose
     picker does not list JW (it started before ~/.claude/themes existed) is restarted with its conversation, if it is
-    idle. Left alone: text typed, waiting on a permission, and --add-dir ones that need a restart (it is lost on resume)."""
+    idle. Left alone: text typed, waiting on a permission, and --add-dir ones that need a restart (it is lost on resume; remembered, not retried)."""
     try:
-        done = set(json.load(open(LIVE)))
-    except (OSError, ValueError): done = set()
+        st = json.load(open(LIVE)); done, skip = set(st["done"]), set(st["skip"])
+    except (OSError, ValueError, KeyError, TypeError): done, skip = set(), set()
     try: terms = json.loads(hc("ls"))["terminals"]
     except (ValueError, subprocess.SubprocessError): return
     now = {x["address"] for x in terms}
-    done &= now
+    done &= now; skip &= now
     for x in terms:
         t = x["address"]
-        if x.get("agent") != "claude-code" or x.get("state") != "live" or t in done or x.get("status") not in ("idle", "done", "working"): continue
+        if x.get("agent") != "claude-code" or x.get("state") != "live" or t in done | skip or x.get("status") not in ("idle", "done", "working"): continue
         try:
             r = pick(t, "JW")
             if r == "missing" and x["status"] != "working":  # never restart one in the middle of a turn
-                if "--add-dir" in " ".join(json.loads(hc("get", t))["argv"]): continue
+                if "--add-dir" in " ".join(json.loads(hc("get", t))["argv"]): skip.add(t); continue
                 t = restart(t)
                 r = pick(t, "JW") if t else r
             if r == "ok": done.add(t)
         except (subprocess.SubprocessError, ValueError, KeyError, StopIteration):
             hc("keys", t, "esc")
-    open(LIVE, "w").write(json.dumps(sorted(done)) + "\n")
+    open(LIVE, "w").write(json.dumps({"done": sorted(done), "skip": sorted(skip)}) + "\n")
 
 if __name__ == "__main__":
     a, ps, c = sys.argv[1:], palettes(), load()
