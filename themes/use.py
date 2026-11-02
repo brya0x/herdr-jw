@@ -5,6 +5,7 @@ import glob, json, os, re, shlex, subprocess, sys, time
 import build
 
 STATE = f"{build.H}/data/jw-theme.json"
+CLAUDE_LAG = 0.2  # seconds to hold Herdr back so it repaints with Claude Code (measured with screenshots: Claude ~0.1-0.3 s behind)
 DEFAULT = {"mode": "dark", "light": "tokyo-night-day", "dark": "tokyo-night"}
 
 def palettes():
@@ -25,7 +26,7 @@ def edit(path, fn):
 def apply(c):
     build.main()
     eff = system() if c["mode"] == "system" else c["mode"]
-    build.active(c[eff])
+    if build.active(c[eff]): time.sleep(CLAUDE_LAG)  # Herdr changes at once, Claude Code a moment after the file: let them meet
     for slug in (c["light"], c["dark"]):
         subprocess.run(["herdr-app", "do", "app.theme", json.dumps({"name": slug})], capture_output=True)
     def appearance(s):

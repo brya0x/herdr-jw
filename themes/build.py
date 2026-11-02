@@ -39,7 +39,9 @@ def active(slug):
     """The one Claude theme every session uses (settings.json: custom:jw). Claude Code watches ~/.claude/themes and repaints
     a running session when this file changes, so a theme change needs no keystrokes in the sessions that already use it."""
     s = json.load(open(os.path.join(HERE, f"{slug}.json")))
-    put(f"{C}/jw.json", claude({**s, "name": "JW"}, s["p"]))
+    path = f"{C}/jw.json"; was = open(path).read() if os.path.exists(path) else None
+    put(path, claude({**s, "name": "JW"}, s["p"]))
+    return open(path).read() != was  # did the file change
 
 def main():
     for f in sorted(glob.glob(os.path.join(HERE, "*.json"))):
