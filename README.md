@@ -64,7 +64,7 @@ in the live config: `./sync.sh pull`, then commit.
 The panel adds GitHub repos (`gh repo clone`, never leaving half clones) or folders (linked, not copied), and shows
 each one's state, branch and changes, and each branch's PR: merged or with failing CI, with a notification.
 
-The panel (`cmd-shift-v`) has four tabs:
+The panel (the **Repos** button in the top bar of a factory workspace) has four tabs:
 
 | Tab | What it shows |
 |---|---|
@@ -152,7 +152,6 @@ From a terminal: `use.py mode light|dark|system`, `set <slug>` and `apply`.
 | `cmd-]` / `cmd-[` | Next / previous space, in the sidebar's order |
 | `cmd-alt-]` / `cmd-alt-[` | Next / previous agent |
 | `cmd-shift-n` | New workspace (factory) |
-| `cmd-shift-v` | Repos, productivity, spend and detections panel |
 | `cmd-shift-t` | The workspace's tasks |
 | `cmd-shift-a` | Artifacts to approve |
 | `cmd-shift-,` | jw screen: Theme, Costs, Panels and Update (`Tab` or `1`-`4` switch section) |

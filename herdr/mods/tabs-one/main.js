@@ -1,6 +1,6 @@
 import { View, div, svg } from "gpui-kit";
 import { h_flex } from "gpui-base";
-import { spaces, agents, panes, setAgentOrder, nextCommand, run, hc, exec, notify, watchFolder, openOverlay, readTextFile, appHome, theme, window, shared, setShared, layout, settings, focused } from "herdr";
+import { spaces, agents, panes, setAgentOrder, run, hc, exec, notify, watchFolder, openOverlay, readTextFile, appHome, theme, window, shared, setShared, layout, settings, focused } from "herdr";
 import { parse, pick, count, prompt, pathFor, MAX_LAPS } from "./tasks-lib.js";
 
 function find(node, id) {
@@ -14,18 +14,7 @@ function find(node, id) {
 
 export default class Tabs extends View {
   init(_props, cx) {
-    this.prev = {}; this.counts = {};
-    // keys.json: "cmd-shift-v": "tabs-one.repos" opens (or focuses) the repos panel of a factory workspace.
-    cx.spawn(async () => {
-      for (;;) {
-        if ((await nextCommand()) !== "repos") continue;
-        const sp = spaces().find((w) => w.active);
-        if (!sp?.folder || (await readTextFile(`${sp.folder}/.factory.json`)) === null) continue;
-        const open = panes().find((p) => p.mod === "factory" && sp.tabs.some((t) => t.id === p.tab));
-        if (open) run("pane.focus", { pane: open.pane });
-        else run("pane.split", { direction: "right", mod: "factory", props: { view: "repos", folder: sp.folder } });
-      }
-    });
+    this.prev = {}; this.counts = {}; this.factory = {};
     cx.timer.every(2000, (cx) => this.tick(cx));
     cx.timer.every(3000, (cx) => this.followSystem(cx));
     // An agent published an artifact (artifacts-jw): a toast that opens the panel. artifact.js writes meta.json last.
@@ -101,6 +90,7 @@ export default class Tabs extends View {
           const st = (shared("factory.tasks") ?? {})[sp.folder];
           const mine = st?.on && st.space === sp.id; // spaces can share a folder: only the one that started the loop gets its tasks
           if (!sp.folder || !(sp.active || mine)) continue;
+          this.factory[sp.folder] = (await readTextFile(`${sp.folder}/.factory.json`)) !== null;
           const path = pathFor(data, sp.folder), tasks = parse(await readTextFile(path));
           this.counts[sp.folder] = count(tasks);
           if (!mine || !ag || !["idle", "done"].includes(ag.status) || !(st.kick || was === "working")) continue;
@@ -153,12 +143,21 @@ export default class Tabs extends View {
       const f = focused();
       run("pane.split", { direction: "right", ...(f?.pane ? { pane: f.pane } : {}), mod: "jw-diff", props: { cwd: f?.cwd || space?.folder || null, on: space?.machine ?? null } });
     });
+    // Repos: the factory's panel (repos, productivity, spend) beside the focused pane; only in a factory workspace; again closes it.
+    const reposPane = () => panes().find((p) => p.mod === "factory" && space?.tabs.some((t) => t.id === p.tab));
+    const reposButton = () => barButton("repos", "Repos", "mods/tabs-one/repos.svg", Boolean(reposPane()), () => {
+      const open = reposPane();
+      if (open) return run("pane.close", { pane: open.pane });
+      const f = focused();
+      run("pane.split", { direction: "right", ...(f?.pane ? { pane: f.pane } : {}), mod: "factory", props: { view: "repos", folder: space.folder } });
+    });
     return h_flex().size_full().min_w(0).px(10).pl(lightsPadding).gap(3).items_center().bg(t.chrome).border_b(1).border_color(t.border)
       .child(div().id("space-name").flex_1().min_w(0).truncate().text_size(12.8).text_color(t.muted).child(space?.name ?? ""))
       .when(Boolean(this.counts[space?.folder]?.total || loop?.on), el => el.child(h_flex().id("tasks-chip").h(26).px(8).gap(4).flex_none().items_center().rounded(6).text_size(12).text_color(t.muted)
         .hover(s => s.bg(t.hover)).on_mouse_down("left", stop)
         .on_click(() => openOverlay({ mod: "factory-tasks", kind: "dialog", width: 640, height: 520 }))
         .child(`${loop?.on ? "⟳ " : ""}${this.counts[space?.folder]?.done ?? 0}/${this.counts[space?.folder]?.total ?? 0}`)))
+      .when(Boolean(this.factory[space?.folder]), el => el.child(reposButton()))
       .when(enabled.includes("diff"), el => el.child(diffButton()))
       .when(enabled.includes("files"), el => el.child(panelButton("files", "Files", "mods/files/file.svg")))
       .when(enabled.includes("changes"), el => el.child(panelButton("changes", "Changes", "mods/changes/changes.svg")))

@@ -11,7 +11,6 @@
     "cmd-n": "space.new",
     "cmd-shift-n": "mod.open:factory",
     "cmd-shift-t": "mod.open:factory-tasks",
-    "cmd-shift-v": "tabs-one.repos",
     "cmd-shift-a": "mod.open:artifacts-jw",
     "cmd-p": "mod.open:picker-one",
     "cmd-shift-p": "app.palette",

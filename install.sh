@@ -23,7 +23,7 @@ curl -fsSL "$URL" | tar -xz -C "$T" --strip-components=1
 sh "$T/sync.sh" push </dev/null
 echo "herdr-jw: mods, layout, themes and the herdr-tasks skill are in $H"
 
-# Add our shortcuts to keys.json; drop the tab.* ones (there are no tabs) and the ones of mods that jw-settings replaced. Keep a backup if it changes.
+# Add our shortcuts to keys.json; drop the tab.* ones (there are no tabs) and the ones of mods that jw-settings replaced and the Repos shortcut (now a button). Keep a backup if it changes.
 if [ "$KEYS" = 1 ] && [ -f "$H/keys.json" ]; then
   python3 - "$H/keys.json" "$T/herdr/config/keys.json" <<'PY'
 import json, shutil, sys, time
@@ -32,7 +32,7 @@ cur = json.load(open(path)); new = json.load(open(ours))
 out = json.loads(json.dumps(cur))
 for sec, binds in new.items():
     out.setdefault(sec, {}).update(binds)
-GONE = ("mod.open:themes-jw", "mod.open:factory-usage", "mod.open:update-jw")  # mods that jw-settings replaced
+GONE = ("mod.open:themes-jw", "mod.open:factory-usage", "mod.open:update-jw", "tabs-one.repos")  # mods that jw-settings replaced
 for k in [k for k, v in out.get("global", {}).items() if v == "mod.open:jw-settings" and k not in new.get("global", {})]:
     del out["global"][k]  # an older shortcut of the same screen (it was cmd-shift-j)
 for k in [k for k, v in out.get("global", {}).items() if str(v).startswith("tab.") or v in GONE]:
