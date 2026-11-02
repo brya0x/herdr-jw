@@ -1,6 +1,6 @@
 import { View, div, svg } from "gpui-kit";
 import { h_flex } from "gpui-base";
-import { spaces, agents, panes, setAgentOrder, nextCommand, run, hc, exec, notify, watchFolder, openOverlay, readTextFile, appHome, theme, window, shared, setShared, layout, settings } from "herdr";
+import { spaces, agents, panes, setAgentOrder, nextCommand, run, hc, exec, notify, watchFolder, openOverlay, readTextFile, appHome, theme, window, shared, setShared, layout, settings, focused } from "herdr";
 import { parse, pick, count, prompt, pathFor, MAX_LAPS } from "./tasks-lib.js";
 
 function find(node, id) {
@@ -135,23 +135,33 @@ export default class Tabs extends View {
     const panel = find(root, "panel"), body = find(root, "panel-body");
     const enabled = shared("jw.buttons") ?? ["diff"]; // the Diff button is on; Files and Changes are off unless cmd-shift-, > Paneles turns them on
     this.syncPanel(space, panel, body, enabled);
+    const barButton = (id, label, icon, on, click) => h_flex().id(`panel-${id}`).h(26).px(8).gap(5).flex_none().items_center().rounded(6)
+      .text_size(12).bg(on ? t.selected : t.chrome).text_color(on ? t.foreground : t.muted)
+      .hover(s => s.bg(t.hover)).on_mouse_down("left", stop).on_click(click).child(svg(icon).size(14)).child(label);
     const panelButton = (id, label, icon) => {
       const on = panel && !panel.hidden && body?.active === id;
-      return h_flex().id(`panel-${id}`).h(26).px(8).gap(5).flex_none().items_center().rounded(6)
-        .text_size(12).bg(on ? t.selected : t.chrome).text_color(on ? t.foreground : t.muted)
-        .hover(s => s.bg(t.hover)).on_mouse_down("left", stop)
-        .on_click(() => {
-          if (on) run("layout.hide", { id: "panel" });
-          else { run("layout.select", { stack: "panel-body", child: id }); run("layout.show", { id: "panel" }); }
-        }).child(svg(icon).size(14)).child(label);
+      return barButton(id, label, icon, on, () => {
+        if (on) run("layout.hide", { id: "panel" });
+        else { run("layout.select", { stack: "panel-body", child: id }); run("layout.show", { id: "panel" }); }
+      });
     };
+    // Diff: a terminal pane beside the focused one that runs the diff viewer (data/jw-diff/diff.js, installed by sync.sh); again closes it.
+    // The viewer names its terminal "jw diff", which is how it is found.
+    const diffPane = () => panes().find((p) => p.tab === focused()?.tab && p.title === "jw diff");
+    const diffButton = () => barButton("diff", "Diff", "mods/tabs-one/diff.svg", Boolean(diffPane()), () => {
+      const open = diffPane();
+      if (open) return run("pane.close", { pane: open.pane });
+      const f = focused();
+      run("pane.split", { direction: "right", ...(f?.pane ? { pane: f.pane } : {}),
+        argv: ["/bin/zsh", "-lic", 'exec bun "$@"', "zsh", `${appHome()}/data/jw-diff/diff.js`, "--cwd", f?.cwd || space?.folder || ""] });
+    });
     return h_flex().size_full().min_w(0).px(10).pl(lightsPadding).gap(3).items_center().bg(t.chrome).border_b(1).border_color(t.border)
       .child(div().id("space-name").flex_1().min_w(0).truncate().text_size(12.8).text_color(t.muted).child(space?.name ?? ""))
       .when(Boolean(this.counts[space?.folder]?.total || loop?.on), el => el.child(h_flex().id("tasks-chip").h(26).px(8).gap(4).flex_none().items_center().rounded(6).text_size(12).text_color(t.muted)
         .hover(s => s.bg(t.hover)).on_mouse_down("left", stop)
         .on_click(() => openOverlay({ mod: "factory-tasks", kind: "dialog", width: 640, height: 520 }))
         .child(`${loop?.on ? "⟳ " : ""}${this.counts[space?.folder]?.done ?? 0}/${this.counts[space?.folder]?.total ?? 0}`)))
-      .when(enabled.includes("diff"), el => el.child(panelButton("diff", "Diff", "mods/diff-jw/diff.svg")))
+      .when(enabled.includes("diff"), el => el.child(diffButton()))
       .when(enabled.includes("files"), el => el.child(panelButton("files", "Files", "mods/files/file.svg")))
       .when(enabled.includes("changes"), el => el.child(panelButton("changes", "Changes", "mods/changes/changes.svg")))
       .when(w?.buttons, el => el.child(button("minimize", w.platform === "windows" ? svg("mods/tabs-one/win-min.svg").size(16) : "−", () => run("window.minimize")))

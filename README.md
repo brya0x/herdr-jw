@@ -25,14 +25,15 @@ Ordenada por quién consume cada cosa:
 install.sh  sync.sh  README.md
 .claude-plugin/marketplace.json    marketplace del plugin (tiene que estar en la raíz)
 herdr/                             lo que carga Herdr
-├── mods/                          factory, factory-tasks, worktree-wt, tabs-one, picker-one, spaces-one, jw-settings, artifacts-jw, diff-jw
+├── mods/                          factory, factory-tasks, worktree-wt, tabs-one, picker-one, spaces-one, jw-settings, artifacts-jw
 ├── layouts/                       jw.json
 └── config/                        keys.json (atajos)
 claude/                            lo que carga Claude Code
 ├── plugins/jw/                    jw:tasks, jw:role
 └── skills/                        herdr-tasks
 internals/
-└── themes/                        paletas y scripts que sirven a Herdr y a Claude Code a la vez
+├── themes/                        paletas y scripts que sirven a Herdr y a Claude Code a la vez
+└── diff/                          el visor de diff (programa de terminal) y su lógica
 ```
 
 `install.sh` y `sync.sh` copian a `~/.config/herdr-app` y a `~/.claude`; esas rutas no cambian.
@@ -133,9 +134,9 @@ Desde la terminal: `use.py mode light|dark|system`, `set <slug>` y `apply`.
 ### Navegación y layout
 
 - `herdr/layouts/jw.json`: clon de `main` sin la sección de agentes, con `tabs-one`.
-- `herdr/mods/tabs-one`: sin pestañas ni `+`, un solo tab por workspace; deja el nombre y los botones de ventana. El botón Diff abre un panel a la derecha (se ensancha arrastrando el borde); Files y Changes vienen apagados y se encienden en `cmd-shift-,` > Paneles.
+- `herdr/mods/tabs-one`: sin pestañas ni `+`, un solo tab por workspace; deja el nombre y los botones de ventana. El botón Diff abre el visor de diff en un pane de terminal a la derecha; Files y Changes vienen apagados y se encienden en `cmd-shift-,` > Paneles.
 - `herdr/mods/spaces-one`: los worktrees cuelgan de su repo (o del workspace que lista ese repo), y `cmd-]` / `cmd-[` recorren los spaces en el orden del sidebar.
-- `herdr/mods/diff-jw`: el panel **Diff** (botón de la barra de arriba), con las tres vistas del visor de jw: **Sin commit** (el árbol de trabajo contra `HEAD`), **Rama** (contra la rama base, `origin/main` o la que diga `origin/HEAD`) y **Commits** (se elige uno y salen sus archivos). Cada archivo tiene su casilla de «visto», que se guarda en `data/diff-seen.json` y se apaga si el cambio del archivo cambia. Solo lee: no escribe nada en `.git`. Sin portar de jw todavía: cambios por palabra, ajuste de líneas largas, selección de líneas y abrir un archivo en un visor.
+- `internals/diff` (botón **Diff** de la barra de arriba): el visor de diff de jw como un **panel de terminal**. El botón abre un pane a la derecha del agente (con su borde, foco, zoom y swap, y el font del terminal de Herdr) que corre `bun data/jw-diff/diff.js`; pulsarlo otra vez lo cierra. Tres vistas: `1` **Sin commit** (el árbol de trabajo contra `HEAD`), `2` **Rama** (contra la rama base, `origin/main` o la que diga `origin/HEAD`) y `3` **Commits** (`↵` abre uno y `b` vuelve). `↑↓` o `n`/`p` cambian de archivo, `tab` pasa el foco a la lista o al diff, `space`/`b` paginan, `v` marca un archivo como visto (se guarda en `data/diff-seen.json` y se apaga si su cambio cambia), `w` activa o quita el ajuste de líneas, `r` relee y `q` sale. Se refresca solo cuando cambia el árbol de trabajo o `HEAD`. Solo lee: no escribe nada en `.git`. Sin portar de jw todavía: cambios por palabra, selección de líneas con `V` y abrir un archivo en un visor.
 - `herdr/mods/picker-one`: selector de tabs y spaces (`cmd-p`).
 - `herdr/mods/jw-settings` (`cmd-shift-,`): una sola pantalla con lista a la izquierda, como los Settings de Herdr. **Tema** (claro, oscuro o sistema, y qué tema), **Costos** (costo y tokens por proyecto y por semana, de `~/.claude/projects`, mismas reglas de conteo que `usage.rs` de jw) y **Paneles** (qué botones salen en la barra de arriba: Diff encendido, Files y Changes apagados) y **Actualizar** (corre el `install.sh` publicado, sin tocar `keys.json`).
 
@@ -173,7 +174,7 @@ El costo muestra «sin tarifa» hasta que escribas `~/.config/herdr-app/data/fac
 bun herdr/mods/worktree-wt/jwtoml.test.js     # lee .jw.toml reales de un repo tuyo: la ruta está al inicio del test
 bun herdr/mods/artifacts-jw/artifact.test.js
 bun herdr/mods/factory-tasks/lib.test.js
-bun herdr/mods/diff-jw/lib.test.js
+bun internals/diff/lib.test.js
 node herdr/mods/factory/test_stats.mjs
 python3 herdr/mods/factory/test_fails.py
 python3 herdr/mods/factory/test_flow.py

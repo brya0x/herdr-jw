@@ -1,6 +1,6 @@
 // bun lib.test.js
 import assert from "node:assert/strict";
-import { parseNumstat, parseStatus, parseNameStatus, parseLog, chooseBase, diffRows, signature, seenKey, isSeen, ago } from "./lib.js";
+import { wrapRows, parseNumstat, parseStatus, parseNameStatus, parseLog, chooseBase, diffRows, signature, seenKey, isSeen, ago } from "./lib.js";
 
 assert.deepEqual(parseNumstat("3\t1\ta.js\0-\t-\timg.png\0"), { "a.js": { add: 3, del: 1, binary: false }, "img.png": { add: 0, del: 0, binary: true } });
 assert.deepEqual(parseNumstat("1\t0\ta\tb.js\0")["a\tb.js"].add, 1); // a tab inside a path
@@ -27,4 +27,8 @@ assert.ok(!isSeen(marks, "/r", "work", { ...f, add: 3 }), "a changed file is not
 assert.ok(!isSeen(marks, "/r", "branch", f) && !isSeen(marks, "/other", "work", f));
 
 assert.equal(ago(1000, 1000 + 120), "2 min"); assert.equal(ago(0, 7200), "2 h"); assert.equal(ago(0, 86400 * 3), "3 d");
+// wrapping: a long line continues in the next rows; off, it stays one row; a hunk header never wraps
+assert.deepEqual(wrapRows([{ kind: "+", number: 1, text: "abcdefghijkl" }], 10, true).map((r) => [r.text, Boolean(r.cont)]), [["abcdefghij", false], ["kl", true]]);
+assert.equal(wrapRows([{ kind: "+", number: 1, text: "abcdefghijkl" }], 10, false).length, 1);
+assert.equal(wrapRows([{ kind: "@", text: "@@ -1 +1 @@ " + "x".repeat(40) }], 10, true).length, 1);
 console.log("ok");

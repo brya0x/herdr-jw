@@ -1,4 +1,4 @@
-// The pure part of the diff panel: what git prints in, rows and marks out. main.js does the reading and the drawing.
+// The pure part of the diff viewer: what git prints in, rows and marks out. diff.js does the reading and the drawing.
 
 // `git diff --numstat -z --no-renames`: "add\tdel\tpath\0" per file (binary files print "-" for both numbers).
 export function parseNumstat(text) {
@@ -69,4 +69,14 @@ export function ago(seconds, now = Date.now() / 1000) {
   if (s < 3600) return `${Math.max(1, Math.round(s / 60))} min`;
   if (s < 86400) return `${Math.round(s / 3600)} h`;
   return `${Math.round(s / 86400)} d`;
+}
+
+// The rows as they are drawn: a long line goes on in the rows that follow (marked `cont`), or is cut when wrapping is off.
+export function wrapRows(rows, width, wrap) {
+  const w = Math.max(10, width), out = [];
+  for (const r of rows) {
+    if (r.kind === "@" || !wrap || r.text.length <= w) { out.push(r); continue; }
+    for (let i = 0; i < r.text.length; i += w) out.push(i === 0 ? { ...r, text: r.text.slice(0, w) } : { kind: r.kind, cont: true, text: r.text.slice(i, i + w) });
+  }
+  return out;
 }

@@ -5,8 +5,8 @@
 set -eu
 H=${HERDR_APP_HOME:-$HOME/.config/herdr-app}
 R=$(cd "$(dirname "$0")" && pwd)
-MODS="factory worktree-wt tabs-one picker-one factory-tasks spaces-one jw-settings artifacts-jw diff-jw"
-OLD_MODS="themes-jw factory-usage update-jw"  # replaced by jw-settings: removed from the live config on push
+MODS="factory worktree-wt tabs-one picker-one factory-tasks spaces-one jw-settings artifacts-jw"
+OLD_MODS="themes-jw factory-usage update-jw diff-jw"  # replaced by jw-settings: removed from the live config on push
 # gpui-kit.d.ts and jsconfig.json are written by Herdr on every start
 rs() { rsync -a "$@" --exclude=gpui-kit.d.ts --exclude=jsconfig.json --exclude='*.error' --exclude=.DS_Store; }
 case ${1:-} in
@@ -18,6 +18,7 @@ case ${1:-} in
     mkdir -p "$H/layouts"; cp "$R/herdr/layouts/jw.json" "$H/layouts/jw.json"
     mkdir -p "$H/data/jw-themes"; cp "$R"/internals/themes/*.json "$R/internals/themes/build.py" "$R/internals/themes/use.py" "$H/data/jw-themes/"
     python3 "$R/internals/themes/build.py" >/dev/null
+    mkdir -p "$H/data/jw-diff"; cp "$R/internals/diff/diff.js" "$R/internals/diff/lib.js" "$H/data/jw-diff/"
     mkdir -p "$HOME/.claude/skills/herdr-tasks"; cp "$R/claude/skills/herdr-tasks/SKILL.md" "$HOME/.claude/skills/herdr-tasks/SKILL.md" ;;
   pull)
     for m in $MODS; do mkdir -p "$R/herdr/mods/$m"; rs --delete "$H/mods/$m/" "$R/herdr/mods/$m/"; done
