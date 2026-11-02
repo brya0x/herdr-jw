@@ -145,15 +145,13 @@ export default class Tabs extends View {
         else { run("layout.select", { stack: "panel-body", child: id }); run("layout.show", { id: "panel" }); }
       });
     };
-    // Diff: a terminal pane beside the focused one that runs the diff viewer (data/jw-diff/diff.js, installed by sync.sh); again closes it.
-    // The viewer names its terminal "jw diff", which is how it is found.
-    const diffPane = () => panes().find((p) => p.tab === focused()?.tab && p.title === "jw diff");
+    // Diff: a pane beside the focused one that runs the diff-jw mod (a pane has its border, focus, zoom and swap); again closes it.
+    const diffPane = () => panes().find((p) => p.tab === focused()?.tab && p.mod === "diff-jw");
     const diffButton = () => barButton("diff", "Diff", "mods/tabs-one/diff.svg", Boolean(diffPane()), () => {
       const open = diffPane();
       if (open) return run("pane.close", { pane: open.pane });
       const f = focused();
-      run("pane.split", { direction: "right", ...(f?.pane ? { pane: f.pane } : {}),
-        argv: ["/bin/zsh", "-lic", 'exec bun "$@"', "zsh", `${appHome()}/data/jw-diff/diff.js`, "--cwd", f?.cwd || space?.folder || ""] });
+      run("pane.split", { direction: "right", ...(f?.pane ? { pane: f.pane } : {}), mod: "diff-jw", props: { cwd: f?.cwd || space?.folder || null, on: space?.machine ?? null } });
     });
     return h_flex().size_full().min_w(0).px(10).pl(lightsPadding).gap(3).items_center().bg(t.chrome).border_b(1).border_color(t.border)
       .child(div().id("space-name").flex_1().min_w(0).truncate().text_size(12.8).text_color(t.muted).child(space?.name ?? ""))
