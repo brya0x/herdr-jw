@@ -29,17 +29,17 @@ export const count = (tasks) => ({ done: tasks.filter((t) => t.status === "done"
 
 // What the loop does next: a task to give, or why it stops.
 export function pick(tasks) {
-  if (!tasks.length) return { stop: "no hay lista" };
-  if (tasks.some((t) => t.status === "blocked")) return { stop: "tarea bloqueada" };
-  if (tasks.every((t) => t.status === "done")) return { stop: "todo listo" };
+  if (!tasks.length) return { stop: "no list" };
+  if (tasks.some((t) => t.status === "blocked")) return { stop: "task blocked" };
+  if (tasks.every((t) => t.status === "done")) return { stop: "all done" };
   const done = new Set(tasks.filter((t) => t.status === "done").map((t) => t.id));
   const task = tasks.find((t, i) => t.status === "todo" && deps(t, i, tasks).every((d) => done.has(d)));
-  return task ? { task } : { stop: "ninguna tarea lista (revisa los after:)" };
+  return task ? { task } : { stop: "no task is ready (check the after: lines)" };
 }
 
 // One line: `hc send` pastes it and presses enter.
 export const prompt = (task, path) =>
-  `Tarea ${task.id}: ${task.id === "fin" ? FINAL : task.title}. La lista está en ${path}. Al terminar, cambia su línea a [x] en ese archivo y termina tu turno. Si necesitas a la persona, cámbiala a [!], escribe debajo una línea "  why: <motivo>" y termina tu turno. No marques hecho lo que no hiciste.`;
+  `Task ${task.id}: ${task.id === "fin" ? FINAL : task.title}. The list is at ${path}. When you finish, change its line to [x] in that file and end your turn. If you need the person, change it to [!], write a line "  why: <reason>" under it and end your turn. Do not mark done what you did not do.`;
 
 // The list as the file needs it: with the last task, `fin`, always there.
 export const withFinal = (md) => (parse(md).some((t) => t.id === "fin") ? md : `${String(md ?? "").replace(/\n*$/, "\n")}- [ ] fin ${FINAL}\n`);

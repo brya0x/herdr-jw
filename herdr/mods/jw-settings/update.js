@@ -1,4 +1,4 @@
-// Section "Actualizar": runs the published install.sh (without touching keys.json) and shows what it printed. The update replaces
+// Section "Update": runs the published install.sh (without touching keys.json) and shows what it printed. The update replaces
 // this mod's own files, so the run is a lock file in data/ plus a log: if the mod reloads in the middle it shows the same run.
 import { div } from "gpui-kit";
 import { v_flex } from "gpui-base";
@@ -39,7 +39,7 @@ export class UpdateSection {
       while (await this.locked() || !this.finished()) { await this.refresh(cx); await new Promise((ok) => cx.timer.after(600, ok)); }
       await this.refresh(cx);
       this.phase = this.text.includes("could not install the Claude Code plugin") ? "warn" : this.failed() ? "fail" : "ok";
-      notify({ title: this.phase === "fail" ? "herdr-jw: la actualización falló" : "herdr-jw actualizado", body: this.last(2) });
+      notify({ title: this.phase === "fail" ? "herdr-jw: the update failed" : "herdr-jw updated", body: this.last(2) });
       cx.notify();
     });
   }
@@ -51,17 +51,17 @@ export class UpdateSection {
 
   render() {
     const t = theme();
-    const head = { idle: "Actualizar herdr-jw", run: "Actualizando…", ok: "Actualizado", warn: "Actualizado, pero falló el plugin de Claude Code", fail: "La actualización falló" }[this.phase];
+    const head = { idle: "Update herdr-jw", run: "Updating…", ok: "Updated", warn: "Updated, but the Claude Code plugin failed", fail: "The update failed" }[this.phase];
     const color = { idle: t.foreground, run: t.working, ok: t.done, warn: t.working, fail: t.blocked }[this.phase];
     const lines = this.text.trim().split("\n").filter(Boolean).slice(-10);
     const go = div().id("update-go").flex_none().px(12).py(6).rounded(6).cursor_pointer().text_color(t.accent_foreground)
       .bg(this.phase === "run" ? t.dim : t.accent).on_click((_e, cx) => this.run(cx))
-      .child(this.phase === "idle" ? "Actualizar ahora" : this.phase === "run" ? "Actualizando…" : "Actualizar otra vez");
+      .child(this.phase === "idle" ? "Update now" : this.phase === "run" ? "Updating…" : "Update again");
     return v_flex().id("jw-update").size_full().p(18).gap(10)
       .child(div().text_size(15).font_semibold().text_color(color).child(head))
-      .child(div().text_color(t.muted).child("Corre el install.sh publicado (mods, layout, temas, el skill herdr-tasks y el plugin jw de Claude Code). No toca keys.json."))
+      .child(div().text_color(t.muted).child("Runs the published install.sh (mods, layout, themes, the herdr-tasks skill and the jw plugin for Claude Code). It does not touch keys.json."))
       .child(div().flex().child(go))
       .child(lines.length ? v_flex().gap(3).p(10).rounded(8).bg(t.surface).text_size(12).text_color(t.muted).children(lines.map((l) => div().child(l.slice(0, 110)))) : div())
-      .child(div().text_size(11).text_color(t.dim).child(this.phase === "idle" ? "Enter también la lanza." : "Reinicia Herdr para cargar los mods nuevos."));
+      .child(div().text_size(11).text_color(t.dim).child(this.phase === "idle" ? "Enter starts it too." : "Restart Herdr to load the new mods."));
   }
 }

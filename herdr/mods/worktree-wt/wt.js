@@ -16,7 +16,7 @@ const git = (cwd, ...args) => run("git", args, cwd);
 // the factory workspace around a folder (the nearest .factory.json upward) and where its repos are
 function factory(from) {
   for (let d = resolve(from); ; d = dirname(d)) {
-    if (existsSync(`${d}/.factory.json`)) { try { return { ws: d, repos: JSON.parse(readFileSync(`${d}/.factory.json`, "utf8")).repos ?? [] }; } catch { die(`${d}/.factory.json no es JSON válido`); } }
+    if (existsSync(`${d}/.factory.json`)) { try { return { ws: d, repos: JSON.parse(readFileSync(`${d}/.factory.json`, "utf8")).repos ?? [] }; } catch { die(`${d}/.factory.json is not valid JSON`); } }
     if (dirname(d) === d) return null;
   }
 }
@@ -42,26 +42,26 @@ export function plan(argv, cwd = process.cwd()) {
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === "--print") o.print = true;
-    else if (["--in", "--branch", "--from", "--open", "--task"].includes(a)) o[a.slice(2)] = argv[++i] ?? die(`${a} necesita un valor`);
-    else if (a.startsWith("--")) die(`opción desconocida: ${a}`);
+    else if (["--in", "--branch", "--from", "--open", "--task"].includes(a)) o[a.slice(2)] = argv[++i] ?? die(`${a} needs a value`);
+    else if (a.startsWith("--")) die(`unknown option: ${a}`);
     else o._.push(a);
   }
-  if (o._.length !== 1) die("uso: wt.js <name> [--in <repo>] [--branch <branch>] [--from <ref>] [--open shell|claude] [--task <text>] [--print]");
-  if (o.open && !["shell", "claude"].includes(o.open)) die("--open: shell o claude");
+  if (o._.length !== 1) die("usage: wt.js <name> [--in <repo>] [--branch <branch>] [--from <ref>] [--open shell|claude] [--task <text>] [--print]");
+  if (o.open && !["shell", "claude"].includes(o.open)) die("--open: shell or claude");
   const branch = o.branch ?? o._[0], folder = o.branch ? o._[0] : folderOf(branch);
-  if (branch.startsWith("-") || !git(cwd, "check-ref-format", "--branch", branch).ok) die(`«${branch}» no es un nombre de rama válido`);
-  if (!validFolder(folder)) die(`«${folder}» no sirve de nombre de carpeta (una sola pieza, hasta 80 letras, sin / ni \\)`);
+  if (branch.startsWith("-") || !git(cwd, "check-ref-format", "--branch", branch).ok) die(`"${branch}" is not a valid branch name`);
+  if (!validFolder(folder)) die(`"${folder}" is not usable as a folder name (one piece, up to 80 characters, no / or \\)`);
 
   const fac = factory(cwd);
   let start = cwd, name = null;
   if (o.in) {
     const r = !o.in.includes("/") && fac?.repos.find((x) => x.name === o.in);
-    if (r) { start = repoPath(fac, r) ?? die(`el repo ${o.in} no está en disco`); name = r.name; }
+    if (r) { start = repoPath(fac, r) ?? die(`repo ${o.in} is not on disk`); name = r.name; }
     else if (existsSync(o.in)) start = resolve(cwd, o.in);
-    else die(`no encuentro el repo «${o.in}»`);
+    else die(`repo "${o.in}" not found`);
   }
   const top = git(start, "rev-parse", "--show-toplevel");
-  if (!top.ok) die(`${start} no es un repositorio git`);
+  if (!top.ok) die(`${start} is not a git repository`);
   const main = git(top.out, "worktree", "list", "--porcelain").out.split("\n")[0].replace(/^worktree /, "");
   if (!name && fac) name = fac.repos.find((r) => { const p = repoPath(fac, r); return p && realpathSync(p) === realpathSync(main); })?.name ?? null;
   // the repo's own .jw.toml, else jw's personal file for its origin (the first that exists is the only one read, as in jw)
@@ -70,7 +70,7 @@ export function plan(argv, cwd = process.cwd()) {
   let cfg; try { cfg = parse(file ? readFileSync(file, "utf8") : ""); } catch (e) { die(`${file}: ${e.message}`); }
   const owned = name && fac ? `${fac.ws}/worktrees/${name}` : factoryRoot(realpathSync(main), factoriesFor([cwd, start])); // by where we are, else by the repo
   const dest = `${owned ?? rootOf(cfg, main, homedir())}/${folder}`;
-  if (existsSync(dest)) die(`ya existe ${dest}`);
+  if (existsSync(dest)) die(`${dest} already exists`);
   return { o, branch, folder, top: top.out, main, cfg, dest, exists: git(main, "show-ref", "--verify", "--quiet", `refs/heads/${branch}`).ok };
 }
 
@@ -78,9 +78,9 @@ export function create(p) {
   const { o, branch, folder, top, main, cfg, dest } = p;
   // an existing branch is checked out as it is; a new one starts from --from, else HEAD, as in jw
   const r = git(top, ...(p.exists ? ["worktree", "add", dest, branch] : ["worktree", "add", "-b", branch, dest, o.from ?? "HEAD"]));
-  if (!r.ok) die(r.err || "git worktree add falló");
+  if (!r.ok) die(r.err || "git worktree add failed");
   for (const rel of cfg.copy) {
-    if (!existsSync(`${main}/${rel}`)) { console.error(`wt: no se copió ${rel}`); continue; }
+    if (!existsSync(`${main}/${rel}`)) { console.error(`wt: not copied: ${rel}`); continue; }
     run("sh", ["-c", 'mkdir -p "$(dirname "$2/$3")" && cp -R "$1/$3" "$2/$3"', "sh", main, dest, rel]);
   }
   const task = (o.task ?? "").trim();
@@ -96,7 +96,7 @@ if (import.meta.main) {
   if (p.o.print) console.log(JSON.stringify(space));
   else {
     const r = run("herdr-app", ["do", "space.new", JSON.stringify(space)]);
-    if (!r.ok) die(`el worktree está en ${p.dest}, pero Herdr no abrió el space: ${r.err || r.out}`);
+    if (!r.ok) die(`the worktree is at ${p.dest}, but Herdr did not open the space: ${r.err || r.out}`);
     console.log(`${p.dest}\n${r.out}`);
   }
 }

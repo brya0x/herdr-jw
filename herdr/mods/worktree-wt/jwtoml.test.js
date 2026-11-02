@@ -19,9 +19,9 @@ assert.equal(setupScript(c, "x", "it's"), "echo 'x' 'it'\\''s'");
 // jw's refusals, with the line
 assert.throws(() => parse('open = "agent"'), /open/);
 assert.throws(() => parse('setup = ["{x}"]'), /\{x\}/);
-assert.throws(() => parse('copy = ["../x"]'), /dentro del repo/);
-assert.throws(() => parse("a = 1\nnonsense"), /línea 2/);
-assert.throws(() => parse('setup = ["a"'), /array sin cerrar/);
+assert.throws(() => parse('copy = ["../x"]'), /inside the repo/);
+assert.throws(() => parse("a = 1\nnonsense"), /line 2/);
+assert.throws(() => parse('setup = ["a"'), /unterminated array/);
 
 // where a worktree goes
 const cfg = (root) => ({ root });

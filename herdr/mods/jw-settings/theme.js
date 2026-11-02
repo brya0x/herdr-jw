@@ -1,11 +1,11 @@
-// Section "Tema": full light, full dark, or follow the system; below, the dark and the light theme (the one in use shows "en uso").
+// Section "Theme": full light, full dark, or follow the system; below, the dark and the light theme (the one in use shows "in use").
 // Up/down + Enter or a click choose, left/right change the mode. use.py does the work for Herdr and Claude Code; open claudes
 // repaint by themselves (jw.json); use.py live moves the rest to it once.
 import { div } from "gpui-kit";
 import { v_flex, h_flex } from "gpui-base";
 import { exec, theme, notify, appHome, readTextFile } from "herdr";
 
-const MODES = [["light", "Claro"], ["dark", "Oscuro"], ["system", "Sistema"]];
+const MODES = [["light", "Light"], ["dark", "Dark"], ["system", "System"]];
 
 export class ThemeSection {
   start(cx) {
@@ -30,7 +30,7 @@ export class ThemeSection {
   use(args, cx) {
     cx.spawn(async (cx) => {
       const r = await exec("python3", [`${this.dir}/use.py`, ...args]);
-      if (r.code !== 0) notify({ title: "Tema: no cambió", body: (r.stderr || r.stdout).trim().slice(0, 200) });
+      if (r.code !== 0) notify({ title: "Theme: not changed", body: (r.stderr || r.stdout).trim().slice(0, 200) });
       await this.load(); cx.notify();
     });
   }
@@ -62,16 +62,16 @@ export class ThemeSection {
         .on_click((_e, cx) => { this.at = i; this.use(["set", th.slug], cx); })
         .child(h_flex().gap(2).flex_none().children(["bg", "red", "yellow", "green", "blue", "magenta"].map((k) => div().w(14).h(14).rounded(3).bg(th.p[k]))))
         .child(div().flex_1().text_color(t.foreground).when(chosen, (d) => d.font_semibold()).child(th.name))
-        .when(chosen, (el) => el.child(div().text_size(11).text_color(live ? t.accent : t.dim).child(live ? "en uso" : "elegido")));
+        .when(chosen, (el) => el.child(div().text_size(11).text_color(live ? t.accent : t.dim).child(live ? "in use" : "chosen")));
     };
     const group = (mode, title) => {
       const rows = this.list.map((th, i) => [th, i]).filter(([th]) => th.mode === mode);
       return rows.length ? [div().px(10).pt(6).text_size(11).text_color(t.dim).child(title), ...rows.map(([th, i]) => row(th, i))] : [];
     };
     return v_flex().id("jw-theme").size_full().overflow_y_scroll().p(18).gap(8)
-      .child(div().text_size(15).font_semibold().text_color(t.foreground).child("Tema"))
+      .child(div().text_size(15).font_semibold().text_color(t.foreground).child("Theme"))
       .child(h_flex().gap(4).p(3).rounded(8).bg(t.surface).children(MODES.map(seg)))
-      .children([...group("dark", "Oscuros"), ...group("light", "Claros")])
-      .when(!this.list.length, (el) => el.child(div().text_color(t.dim).child("Sin temas: corre ./sync.sh push")));
+      .children([...group("dark", "Dark"), ...group("light", "Light")])
+      .when(!this.list.length, (el) => el.child(div().text_color(t.dim).child("No themes: run ./sync.sh push")));
   }
 }

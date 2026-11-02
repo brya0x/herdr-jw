@@ -12,7 +12,7 @@ export class Add {
     this.list = undefined; // undefined: reading
     this.error = "";
     this.added = new Set();
-    this.owner = InputState.new({ value: shared("factory.owner") ?? "", placeholder: "organización o usuario (vacío: tus repos)" });
+    this.owner = InputState.new({ value: shared("factory.owner") ?? "", placeholder: "organization or user (empty: your repos)" });
     this.owner.on("submit", (_e, cx) => this.load(cx));
     this.filter = InputState.new({ value: "", placeholder: "filtrar" });
     this.filter.on("change", (_e, cx) => cx.notify());
@@ -34,7 +34,7 @@ export class Add {
         setShared("factory.owner", owner);
       } catch (e) {
         this.list = [];
-        this.error = `gh: ${String(e?.message ?? e)}. Aún puedes añadir una carpeta.`;
+        this.error = `gh: ${String(e?.message ?? e)}. You can still add a folder.`;
       }
       cx.notify();
     });
@@ -51,7 +51,7 @@ export class Add {
 
   pickDir(cx) {
     cx.spawn(async (cx) => {
-      const path = await pickFolder({ prompt: "Añadir" });
+      const path = await pickFolder({ prompt: "Add" });
       if (path) this.add({ kind: "dir", name: base(path), path: path.replace(/\/+$/, "") }, path, cx);
       cx.notify();
     });
@@ -69,10 +69,10 @@ export class Add {
       return h_flex().id(`gh-${i}`).flex_none().h(30).px(10).gap(8).items_center().rounded(6).cursor_pointer().hover((s) => s.bg(t.hover))
         .on_click((_e, cx) => !done && this.add({ kind: "gh", id: r.nameWithOwner, name: r.nameWithOwner.split("/")[1] }, r.nameWithOwner, cx))
         .child(div().flex_1().min_w(0).truncate().text_color(done ? t.dim : t.foreground).child(r.nameWithOwner))
-        .child(div().flex_none().text_size(11).text_color(done ? t.done : t.dim).child(done ? "✓ añadido" : r.isPrivate ? "privado" : "público"));
+        .child(div().flex_none().text_size(11).text_color(done ? t.done : t.dim).child(done ? "✓ added" : r.isPrivate ? "private" : "public"));
     };
     return v_flex().id("factory-add").size_full().p(16).gap(10).bg(t.popover).text_size(13)
-      .child(h_flex().gap(6).items_center().child(div().flex_1().font_semibold().text_color(t.foreground).child("Añadir repos")).child(tab("gh", "GitHub")).child(tab("dir", "Mi computadora")))
+      .child(h_flex().gap(6).items_center().child(div().flex_1().font_semibold().text_color(t.foreground).child("Add repos")).child(tab("gh", "GitHub")).child(tab("dir", "My computer")))
       .when(this.tab === "gh", (el) => el
         .child(Input.new(this.owner).h(30).px(10).items_center().rounded(6).border(1).border_color(t.input).bg(t.background).text_color(t.foreground))
         .child(Input.new(this.filter).h(30).px(10).items_center().rounded(6).border(1).border_color(t.accent).bg(t.background).text_color(t.foreground))
@@ -80,13 +80,13 @@ export class Add {
           .child(v_flex().id("gh-list").size_full().overflow_y_scroll()
             .when(this.list === undefined, (e) => e.child(div().p(10).text_color(t.muted).child("…")))
             .children(rows.map(row))
-            .when(this.list && !rows.length && !this.error, (e) => e.child(div().p(10).text_color(t.dim).child("Ningún repo con ese texto."))))
+            .when(this.list && !rows.length && !this.error, (e) => e.child(div().p(10).text_color(t.dim).child("No repo matches that text."))))
           .child(Scrollbar.vertical("gh-list").absolute().inset_0())))
       .when(this.tab === "dir", (el) => el
-        .child(div().text_color(t.muted).child("Una carpeta se usa donde está: se enlaza en el workspace, no se copia ni se mueve."))
-        .child(h_flex().child(btn("pick-dir", "Elegir carpeta…", (_e, cx) => this.pickDir(cx), { accent: true }))))
+        .child(div().text_color(t.muted).child("A folder is used where it is: it is linked into the workspace, not copied or moved."))
+        .child(h_flex().child(btn("pick-dir", "Pick a folder…", (_e, cx) => this.pickDir(cx), { accent: true }))))
       .when(Boolean(this.error), (el) => el.child(div().text_size(12).text_color(t.blocked).child(this.error)))
       .when(this.tab === "dir" && this.added.size > 0, (el) => el.child(div().text_size(12).text_color(t.done).child(`✓ ${[...this.added].filter((k) => k.startsWith("/")).map(base).join(", ")}`)))
-      .child(div().text_size(11).text_color(t.dim).child("clic añade · esc cierra"));
+      .child(div().text_size(11).text_color(t.dim).child("click adds · esc closes"));
   }
 }

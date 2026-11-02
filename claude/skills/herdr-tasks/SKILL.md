@@ -20,8 +20,8 @@ With no text, the list is the plan you just made.
 1. Create the folder and write the plan in that file: one line per task, ids `t1`, `t2`, ..., `after:` only where
    one task needs another. End it with `- [ ] fin <tests, CI and the advisor's review>`. If the file already has
    tasks, add at the end; never remove or untick a done line, and never rewrite it while the loop is on.
-2. Tell the person to start the loop: the **Tareas** dialog (`cmd-shift-t`, or the `n/m` chip in the bar) has
-   **Iniciar bucle**. You cannot start it yourself.
+2. Tell the person to start the loop: the **Tasks** dialog (`cmd-shift-t`, or the `n/m` chip in the bar) has
+   **Start loop**. You cannot start it yourself.
 3. Herdr then sends you one task each time you end a turn. Do it, change its line to `[x]`, end your turn.
    If you need the person, change it to `[!]`, write `  why: <reason>` under it and end your turn: the loop stops.
 4. `fin`: run the project's tests and CI, write the result under its line, ask the advisor to review, then `[x]`.

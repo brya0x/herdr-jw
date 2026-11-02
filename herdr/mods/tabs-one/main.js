@@ -107,11 +107,11 @@ export default class Tabs extends View {
           const set = (v) => setShared("factory.tasks", { ...(shared("factory.tasks") ?? {}), [sp.folder]: { ...st, ...v } });
           const next = pick(tasks);
           if (next.stop) set({ on: false, kick: false, reason: next.stop });
-          else if (st.laps >= MAX_LAPS) set({ on: false, kick: false, reason: "se acabaron las vueltas" });
+          else if (st.laps >= MAX_LAPS) set({ on: false, kick: false, reason: "out of laps" });
           else {
             set({ laps: st.laps + 1, kick: false });
             const r = await hc(["send", ag.address, prompt(next.task, path)]);
-            if (r.code !== 0) set({ laps: st.laps + 1, on: false, kick: false, reason: "hc send falló" });
+            if (r.code !== 0) set({ laps: st.laps + 1, on: false, kick: false, reason: "hc send failed" });
           }
         }
       } finally { this.busy = false; }

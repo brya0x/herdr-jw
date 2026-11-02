@@ -6,7 +6,7 @@ import { btn } from "./ui.js";
 import { PERIODS, loadUsage, usageOf, show, fmt, findings, parseSetupLog } from "./usage.js";
 import { SPIN, productivity, spending, detecciones } from "./dash.js";
 
-const TABS = [["prod", "Productividad"], ["gasto", "Gasto"], ["det", "Detecciones"], ["repos", "Repos"]];
+const TABS = [["prod", "Productivity"], ["gasto", "Spend"], ["det", "Detections"], ["repos", "Repos"]];
 
 // The factory panel: productivity and spending of the workspace's agents, and its repos (where each is, its branch, its changes).
 export class Repos {
@@ -83,7 +83,7 @@ export class Repos {
       await Promise.all(wts.map(async (w) => {
         try {
           const r = await exec("gh", ["pr", "list", "--head", w.branch, "--state", "all", "--limit", "1", "--json", "number,state,statusCheckRollup,mergedAt,createdAt"], { cwd: w.path });
-          if (r.code !== 0) ghErr.push(`${w.branch}: ${r.stderr.split("\n").find((l) => l.trim()) ?? `gh salió con código ${r.code}`}`);
+          if (r.code !== 0) ghErr.push(`${w.branch}: ${r.stderr.split("\n").find((l) => l.trim()) ?? `gh exited with code ${r.code}`}`);
           const pr = r.code === 0 ? JSON.parse(r.stdout)[0] : null;
           if (!pr) return;
           const failing = (pr.statusCheckRollup ?? []).some((c) => ["FAILURE", "TIMED_OUT", "STARTUP_FAILURE"].includes(c.conclusion) || ["FAILURE", "ERROR"].includes(c.state));
@@ -94,7 +94,7 @@ export class Repos {
         const was = this.pr[w.path]?.kind, is = now[w.path]?.kind;
         if (is !== was && (is === "merged" || is === "failed")) {
           const space = spaces().find((s) => s.folder === w.path);
-          notify({ title: is === "merged" ? "PR mergeado" : "CI falló", body: `${w.branch} · #${now[w.path].number}`, level: is === "merged" ? "info" : "error", ...(space ? { action: { name: "space.select", args: { id: space.id } } } : {}) });
+          notify({ title: is === "merged" ? "PR merged" : "CI failed", body: `${w.branch} · #${now[w.path].number}`, level: is === "merged" ? "info" : "error", ...(space ? { action: { name: "space.select", args: { id: space.id } } } : {}) });
         }
       }
       this.pr = now;
@@ -132,7 +132,7 @@ export class Repos {
         const next = [...new Set([...JSON.parse(was ?? "[]"), f.id])];
         await writeTextFile(file, JSON.stringify(next), was);
         this.dismissed = next; this.memo = new Map(); this.open = null;
-      } catch (e) { notify({ title: "Detecciones", body: String(e?.message ?? e), level: "error" }); }
+      } catch (e) { notify({ title: "Detections", body: String(e?.message ?? e), level: "error" }); }
       cx.notify();
     });
   }
@@ -160,20 +160,20 @@ export class Repos {
       : r.state === "git" ? div().text_color(t.done).child("✓")
       : r.state === "dir" ? div().text_color(t.working).child("▤")
       : div().text_color(t.blocked).child("⇣");
-    const info = { cloning: "clonando…", failed: "clon fallido", missing: "no está en disco", git: r.branch, dir: "carpeta · sin git" }[r.state];
+    const info = { cloning: "cloning…", failed: "clone failed", missing: "not on disk", git: r.branch, dir: "folder · no git" }[r.state];
     return h_flex().id(`repo-${i}`).flex_none().px(12).py(10).gap(10).items_start().rounded(10).bg(t.raised).border(1).border_color(t.border).hover((s) => s.bg(t.hover))
       .child(div().flex_none().w(14).child(mark))
       .child(v_flex().flex_1().min_w(0).gap(1)
         .child(h_flex().gap(6).items_center()
           .child(div().truncate().font_semibold().text_color(t.foreground).child(r.name))
-          .child(div().flex_none().text_size(11.5).text_color(t.dim).child(r.kind === "gh" ? "github" : "carpeta")))
+          .child(div().flex_none().text_size(11.5).text_color(t.dim).child(r.kind === "gh" ? "github" : "folder")))
         .child(div().truncate().text_size(12).text_color(r.state === "failed" || r.state === "missing" ? t.blocked : t.muted)
           .child(r.state === "git" && r.dirty ? `${info} · ${r.dirty} cambios` : info))
         .child(h_flex().gap(6).child(div().flex_1().min_w(0).truncate().text_size(11.5).text_color(t.dim).child(r.state === "failed" && r.msg ? r.msg.split("\n")[0] : r.real ?? r.path ?? r.id))
           .child(div().flex_none().text_size(11.5).text_color(t.muted).child(this.cost([r.path, r.real, ...(r.wts ?? []).map((w) => w.path)]))))
         .children((r.wts ?? []).map((w, k) => {
           const pr = this.pr[w.path];
-          const badge = { merged: ["⚑ mergeado", t.done], failed: ["✗ CI", t.blocked], open: ["PR", t.dim], closed: ["PR cerrado", t.dim] }[pr?.kind];
+          const badge = { merged: ["⚑ merged", t.done], failed: ["✗ CI", t.blocked], open: ["PR", t.dim], closed: ["PR closed", t.dim] }[pr?.kind];
           return h_flex().id(`wt-${i}-${k}`).gap(6).h(26).items_center().cursor_pointer().rounded(5).hover((s) => s.bg(t.selected))
             .on_click(() => this.openWt(w))
             .child(div().flex_none().text_size(11.5).text_color(t.dim).child("⎇"))
@@ -184,7 +184,7 @@ export class Repos {
         .child(h_flex().gap(6).pt(4)
           .when(r.state === "git", (el) => el.child(btn(`wt-${i}`, "＋ worktree", () => this.worktree(r, "new"))).child(btn(`wts-${i}`, "worktrees", () => this.worktree(r, "open"))))
           .when(r.state === "failed", (el) => el.child(btn(`retry-${i}`, "reintentar", (_e, cx) => this.act(() => retryClone(this.folder, r), cx), { accent: true })))
-          .child(btn(`rm-${i}`, "quitar", (_e, cx) => this.act(() => removeRepo(this.folder, r.name), cx)))));
+          .child(btn(`rm-${i}`, "remove", (_e, cx) => this.act(() => removeRepo(this.folder, r.name), cx)))));
   }
 
   // Every path this workspace's claudes run in: the folder, the repos and their worktrees.
@@ -211,7 +211,7 @@ export class Repos {
           .children(PERIODS.map(([k, label]) => div().id(`period-${k}`).px(10).py(3).text_size(12).cursor_pointer()
             .text_color(this.period === k ? t.foreground : t.muted).when(this.period === k, (x) => x.bg(t.selected).font_semibold()).when(this.period !== k, (x) => x.hover((y) => y.bg(t.hover)))
             .on_click((_e, cx) => { this.period = k; cx.notify(); }).child(label)))))
-        .when(on("repos"), (el) => el.child(btn("add", "＋ añadir", () => openOverlay({ mod: "factory", kind: "dialog", width: 520, height: 520, props: { view: "add", folder: this.folder } }), { accent: true }))))
+        .when(on("repos"), (el) => el.child(btn("add", "＋ add", () => openOverlay({ mod: "factory", kind: "dialog", width: 520, height: 520, props: { view: "add", folder: this.folder } }), { accent: true }))))
       .child(h_flex().gap(18).px(2).border_b(1).border_color(t.border)
         .children(TABS.map(([k, label]) => h_flex().id(`tab-${k}`).gap(6).py(7).items_center().cursor_pointer().text_size(13).border_b(2).border_color(on(k) ? t.accent : t.surface)
           .text_color(on(k) ? t.foreground : t.muted).when(on(k), (el) => el.font_semibold())
@@ -223,9 +223,9 @@ export class Repos {
         .when(this.tab === "gasto", (el) => el.child(spending(this, t)))
         .when(this.tab === "det", (el) => el.child(detecciones(this, t)))
         .when(this.tab === "repos", (el) => el
-          .when(this.bad, (e) => e.child(div().px(4).text_size(12).text_color(t.blocked).child(".factory.json no es JSON válido: arréglalo a mano.")))
+          .when(this.bad, (e) => e.child(div().px(4).text_size(12).text_color(t.blocked).child(".factory.json is not valid JSON: fix it by hand.")))
           .when(this.rows === undefined, (e) => e.child(div().p(10).text_color(t.muted).child("…")))
-          .when(this.rows && !this.rows.length && !this.bad, (e) => e.child(div().p(10).text_color(t.dim).child("sin repos todavía: pulsa «añadir»")))
+          .when(this.rows && !this.rows.length && !this.bad, (e) => e.child(div().p(10).text_color(t.dim).child("no repos yet: press \"add\"")))
           .children((this.rows ?? []).map((r, i) => this.row(r, i, t)))));
   }
 }

@@ -1,5 +1,5 @@
 // cmd-shift-,: one screen for jw, like Herdr's Settings: a list on the left and the section on the right.
-// Tema (light/dark/system and which theme), Costos (what claude has cost), Paneles (the Files and Changes buttons), Actualizar (herdr-jw itself).
+// Theme (light/dark/system and which theme), Costs (what claude has cost), Panels (the Files and Changes buttons), Update (herdr-jw itself).
 // Tab / shift+tab or 1-4 move between sections; each section takes the other keys; Esc leaves.
 import { View, div } from "gpui-kit";
 import { v_flex, h_flex } from "gpui-base";
@@ -9,7 +9,7 @@ import { UsageSection } from "./usage-view.js";
 import { UpdateSection } from "./update.js";
 import { PanelsSection } from "./panels.js";
 
-const SECTIONS = [["theme", "Tema", ThemeSection], ["usage", "Costos", UsageSection], ["panels", "Paneles", PanelsSection], ["update", "Actualizar", UpdateSection]];
+const SECTIONS = [["theme", "Theme", ThemeSection], ["usage", "Costs", UsageSection], ["panels", "Panels", PanelsSection], ["update", "Update", UpdateSection]];
 
 export default class JwSettings extends View {
   init(_props, cx) {
@@ -23,7 +23,7 @@ export default class JwSettings extends View {
 
   go(i, cx) {
     this.at = (i + SECTIONS.length) % SECTIONS.length;
-    if (!this.started.has(this.at)) { this.started.add(this.at); this.sections[this.at].start(cx); } // Costos reads the transcripts only when shown
+    if (!this.started.has(this.at)) { this.started.add(this.at); this.sections[this.at].start(cx); } // Costs reads the transcripts only when shown
     this.handle.focus(); cx.notify();
   }
 

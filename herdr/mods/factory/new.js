@@ -8,7 +8,7 @@ export class NewWorkspace {
   init(cx) {
     this.error = "";
     this.busy = false;
-    this.input = InputState.new({ value: "", placeholder: "nombre del workspace" });
+    this.input = InputState.new({ value: "", placeholder: "workspace name" });
     this.input.on("change", (_e, cx) => { this.error = ""; cx.notify(); });
     this.input.on("submit", (_e, cx) => this.go(cx));
     this.input.focus();
@@ -32,6 +32,6 @@ export class NewWorkspace {
     return v_flex().id("factory-new").size_full().p(16).gap(10).bg(t.popover).text_size(13)
       .child(div().font_semibold().text_color(t.foreground).child("Nuevo workspace"))
       .child(Input.new(this.input).h(32).px(10).items_center().rounded(6).border(1).border_color(t.accent).bg(t.background).text_color(t.foreground))
-      .child(div().text_size(11).text_color(this.error ? t.blocked : t.dim).child(this.error || (this.busy ? "creando…" : "↵ crear (con claude y el panel de repos) · esc cancelar")));
+      .child(div().text_size(11).text_color(this.error ? t.blocked : t.dim).child(this.error || (this.busy ? "creating…" : "↵ create (with claude and the repos panel) · esc cancel")));
   }
 }

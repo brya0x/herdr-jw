@@ -7,7 +7,7 @@ import { slug, formatOf, statusOf } from "./lib.js";
 
 assert.equal(slug("Mi Prototipo v2!"), "mi-prototipo-v2"); assert.equal(slug("***"), "artifact");
 assert.equal(formatOf("a.HTML"), "html"); assert.equal(formatOf("a.md"), "md"); assert.equal(formatOf("a.txt"), null);
-assert.deepEqual([statusOf(null), statusOf({ verdict: "approved" }), statusOf({ verdict: "changes" })], ["pendiente", "aprobado", "cambios"]);
+assert.deepEqual([statusOf(null), statusOf({ verdict: "approved" }), statusOf({ verdict: "changes" })], ["pending", "approved", "changes"]);
 
 const home = mkdtempSync(`${tmpdir()}/artifacts-`), work = `${home}/proj`; mkdirSync(work);
 const env = { ...process.env, HERDR_APP_HOME: home, HC_TERMINAL_ID: "" };
@@ -22,7 +22,7 @@ assert.equal(cli("publish", "n.md", "--kind", "spec").stdout.trim(), "n v1");
 assert.match(cli("publish", "x.txt").stderr, /solo \.html y \.md/);
 assert.match(cli("publish", "p.html", "--kind", "nope").stderr, /--kind/);
 const ls = cli("ls").stdout.trim().split("\n").map((l) => l.split("\t"));
-assert.deepEqual(ls.map((r) => [r[0], r[1], r[2], r[3], r[4]]).sort(), [["n", "spec", "pendiente", "v1", "n"], ["p", "prototype", "pendiente", "v2", "Landing"]]);
+assert.deepEqual(ls.map((r) => [r[0], r[1], r[2], r[3], r[4]]).sort(), [["n", "spec", "pending", "v1", "n"], ["p", "prototype", "pending", "v2", "Landing"]]);
 const dir = `${home}/data/artifacts/proj/p`;
 assert.equal(readFileSync(`${dir}/v2.html`, "utf8"), "<h1>hi</h1>");
 
@@ -31,7 +31,7 @@ assert.equal(await waitFor("wait", "p", "--timeout", "1"), 3);
 const decide = (n, v) => setTimeout(() => writeFileSync(`${dir}/v${n}.verdict.json`, JSON.stringify(v)), 400);
 decide(2, { verdict: "approved", note: "", ts: "t" });
 assert.equal(await waitFor("wait", "p", "--timeout", "10"), 0);
-assert.equal(JSON.parse(cli("ls", "--json").stdout).find((a) => a.id === "p").status, "aprobado");
+assert.equal(JSON.parse(cli("ls", "--json").stdout).find((a) => a.id === "p").status, "approved");
 // publishing again is a new version, pending again; --wait returns the verdict of that version
 const pub = spawn("bun", [`${import.meta.dir}/artifact.js`, "publish", "p.html", "--wait", "--timeout", "10"], { cwd: work, env });
 let out = ""; pub.stdout.on("data", (d) => (out += d));
@@ -45,5 +45,5 @@ assert.equal(readdirSync(`${home}/data/artifacts/proj/n`).filter((f) => /^v\d+\.
 assert.ok(!existsSync(`${home}/data/artifacts/proj/n/v1.md`));
 
 assert.equal(cli("rm", "p").status, 0); assert.ok(!existsSync(dir));
-assert.match(cli("rm", "p").stderr, /no hay un artifact/);
+assert.match(cli("rm", "p").stderr, /no artifact/);
 console.log("ok");

@@ -1,176 +1,182 @@
 # herdr-jw
 
-**Un workspace es una fábrica: una carpeta con varios repos, un agente y sus worktrees.**
+**A workspace is a factory: a folder with several repos, an agent and their worktrees.**
 
-Mods y layout para [Herdr](https://herdr.dev) que llevan a Herdr el flujo de trabajo de jw
-(`feat/repo-refs-prototype` y `feat/workspace-factory`) y lo atan a Claude Code: creas el workspace, le
-añades repos, abres worktrees con su `setup`, dejas que el agente trabaje una lista de tareas, apruebas sus
-resultados desde un panel y ves cuánto cuesta y cuánto tarda cada PR. Sin la app de Android.
+Mods and a layout for [Herdr](https://herdr.dev) that bring jw's workflow (`feat/repo-refs-prototype` and
+`feat/workspace-factory`) to Herdr and tie it to Claude Code: you create the workspace, add repos to it, open
+worktrees with their `setup`, let the agent work through a task list, approve its results from a panel, and see
+what each PR costs and how long it takes. No Android app.
 
 ```
-~/ws/mi-producto/              un workspace = un space de Herdr con claude al lado
-├── .factory.json              los repos del workspace
+~/ws/my-product/               a workspace = a Herdr space with claude beside it
+├── .factory.json              the workspace's repos
 ├── repos/
-│   ├── api/                   clonado de GitHub (o enlazado a una carpeta tuya)
+│   ├── api/                   cloned from GitHub (or linked to a folder of yours)
 │   └── web/
 └── worktrees/
-    └── api/fix-login/         una rama, con su setup ya corrido
+    └── api/fix-login/         a branch, with its setup already run
 ```
 
-## Estructura del repo
+## Repo layout
 
-Ordenada por quién consume cada cosa:
+Organised by who consumes each thing:
 
 ```
 install.sh  sync.sh  README.md
-.claude-plugin/marketplace.json    marketplace del plugin (tiene que estar en la raíz)
-herdr/                             lo que carga Herdr
+.claude-plugin/marketplace.json    the plugin's marketplace (it has to be at the root)
+herdr/                             what Herdr loads
 ├── mods/                          factory, factory-tasks, worktree-wt, tabs-one, picker-one, spaces-one, jw-settings, artifacts-jw, jw-diff
 ├── layouts/                       jw.json
-└── config/                        keys.json (atajos)
-claude/                            lo que carga Claude Code
+└── config/                        keys.json (shortcuts)
+claude/                            what Claude Code loads
 ├── plugins/jw/                    jw:tasks, jw:role
 └── skills/                        herdr-tasks
 internals/
-└── themes/                        paletas y scripts que sirven a Herdr y a Claude Code a la vez
+└── themes/                        palettes and scripts that serve Herdr and Claude Code at once
 ```
 
-`install.sh` y `sync.sh` copian a `~/.config/herdr-app` y a `~/.claude`; esas rutas no cambian.
+`install.sh` and `sync.sh` copy to `~/.config/herdr-app` and `~/.claude`; those paths do not change.
 
-## Instalar
+## Install
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/brya0x/herdr-jw/main/install.sh | sh
 ```
 
-Hace falta Herdr (abierto una vez), `curl`, `tar`, `rsync` y `python3`, en macOS. El script baja el repo y
-copia mods, layout, temas y el skill `herdr-tasks` a `~/.config/herdr-app`. También añade a `keys.json` los
-atajos de abajo y quita los `tab.*`; si cambia algo deja una copia `keys.json.bak-<fecha>`.
+You need Herdr (opened once), `curl`, `tar`, `rsync` and `python3`, on macOS. The script downloads the repo and
+copies the mods, layout, themes and the `herdr-tasks` skill to `~/.config/herdr-app`. It also adds the shortcuts
+below to `keys.json` and removes the `tab.*` ones; if anything changes it leaves a `keys.json.bak-<date>` copy.
 
-- `| sh -s -- --no-keys` no toca `keys.json`.
-- `| sh -s -- --no-plugin` no instala el plugin `jw` de Claude Code (si hay `claude`, lo añade desde el marketplace de este repo; volver a correrlo lo actualiza).
-- `HERDR_JW_REF=<rama|tag>` elige la versión. Volver a correrlo actualiza.
-- Para actualizar sin salir de Herdr: `cmd-shift-,` y la sección **Actualizar** corre esto mismo y muestra lo que imprime. Reinicia Herdr después para cargar los mods nuevos.
-- Reinicia Herdr y activa el layout: `herdr-app do layout.switch '{"name":"jw"}'` (el script no lo cambia solo).
+- `| sh -s -- --no-keys` leaves `keys.json` alone.
+- `| sh -s -- --no-plugin` skips the `jw` plugin for Claude Code (if `claude` is installed it adds the plugin from this repo's marketplace; running the script again updates it).
+- `HERDR_JW_REF=<branch|tag>` picks the version. Running it again updates.
+- To update without leaving Herdr: `cmd-shift-,` and the **Update** section runs the same thing and shows what it prints. Restart Herdr afterwards to load the new mods.
+- Restart Herdr and turn the layout on: `herdr-app do layout.switch '{"name":"jw"}'` (the script does not switch it for you).
 
-Desde un clon: `./sync.sh push` copia lo mismo sin tocar `keys.json`. Para guardar en el repo lo que cambiaste
-en la config viva: `./sync.sh pull`, y commit.
+From a clone: `./sync.sh push` copies the same without touching `keys.json`. To save into the repo what you changed
+in the live config: `./sync.sh pull`, then commit.
 
-## Qué trae
+## What it brings
 
-### Workspaces como fábrica (`herdr/mods/factory`)
+### Workspaces as a factory (`herdr/mods/factory`)
 
-`cmd-shift-n` pide un nombre, crea `~/ws/<nombre>/` y abre un space con `claude` y el panel de repos al lado.
-El panel añade repos de GitHub (`gh repo clone`, sin dejar clones a medias) o carpetas (enlazadas, sin copiar),
-y muestra de cada uno su estado, rama y cambios, y de cada rama su PR: mergeado o con el CI fallido, con aviso.
+`cmd-shift-n` asks for a name, creates `~/ws/<name>/` and opens a space with `claude` and the repos panel beside it.
+The panel adds GitHub repos (`gh repo clone`, never leaving half clones) or folders (linked, not copied), and shows
+each one's state, branch and changes, and each branch's PR: merged or with failing CI, with a notification.
 
-El panel (`cmd-shift-v`) tiene cuatro pestañas:
+The panel (`cmd-shift-v`) has four tabs:
 
-| Pestaña | Qué muestra |
+| Tab | What it shows |
 |---|---|
-| **Productividad** | La fábrica: todos los worktrees por etapa (y a la vez el filtro de la lista), veces que hablaste por PR, tiempo de ciclo (inicio → merge, inicio → PR, PR → merge), PRs por semana, tokens por modelo, agentes ahora y la lista de worktrees con su PR. |
-| **Gasto** | Consumo, costo medio por PR, uso por modelo, tokens por semana y mayores consumos. |
-| **Detecciones** | Fallos, no PRs. Los de los agentes (comandos que fallaron en los últimos 7 días y nadie arregló) y los de la fábrica (un `setup` que salió con error, clones fallidos, `gh`, la lectura del uso). Un clic muestra el error y ofrece «Arreglar con un agente» (un claude en esa carpeta con el error como primer mensaje), «Ver worktree» y «Descartar». |
-| **Repos** | Añadir, quitar y crear worktrees. |
+| **Productivity** | The factory: every worktree by stage (and also the list's filter), times you spoke per PR, cycle time (start → merge, start → PR, PR → merge), PRs per week, tokens per model, agents now and the list of worktrees with their PR. |
+| **Spend** | Consumption, average cost per PR, usage per model, tokens per week and biggest consumers. |
+| **Detections** | Failures, not PRs. The agents' (commands that failed in the last 7 days and nobody fixed) and the factory's (a `setup` that exited with an error, failed clones, `gh`, the usage reading). A click shows the error and offers "Fix with an agent" (a claude in that folder with the error as its first message), "Open worktree" and "Dismiss". |
+| **Repos** | Add, remove and create worktrees. |
 
-Todo sale de los transcripts de claude y de `gh`. No hay evaluadores (scores): nada los mide todavía.
+Everything comes from claude's transcripts and `gh`. There are no evaluators (scores): nothing measures them yet.
 
-### Worktrees como jw (`herdr/mods/worktree-wt`)
+### Worktrees like jw (`herdr/mods/worktree-wt`)
 
-Lee el `.jw.toml` del repo (`root`, `setup`, `copy`, `open`), pone la carpeta en el último segmento de la rama,
-valida como jw, corre `setup` antes de abrir, puede pasarle una tarea inicial a claude y avisa de commits sin
-subir al quitar. Desde la terminal:
-
-```sh
-bun herdr/mods/worktree-wt/wt.js <rama> [--in <repo>] [--branch b] [--from ref] [--open shell|claude] [--task texto]
-```
-
-Los repos de un workspace van a `<workspace>/worktrees/<repo>/<carpeta>`; los demás, a `<repo>-wt/` según
-`.jw.toml`. El workspace se reconoce por el repo (aunque su carpeta en `repos/` sea un enlace a otro sitio) y no por la carpeta desde la que se lanza.
-
-### Tareas con bucle (`herdr/mods/factory-tasks` + `claude/skills/herdr-tasks`)
-
-`cmd-shift-t` abre la lista de tareas del workspace (Markdown de jw, una por carpeta). Al terminar el turno el
-agente recibe la siguiente tarea lista, hasta 20 vueltas o hasta que todo esté hecho o una tarea quede
-bloqueada. El contador `n/m` se ve en la barra. El skill `herdr-tasks` enseña al agente a escribir su plan ahí.
-
-### Artifacts por aprobar (`herdr/mods/artifacts-jw`)
-
-Un agente publica un `.html` o `.md` y se queda esperando tu decisión:
+Reads the repo's `.jw.toml` (`root`, `setup`, `copy`, `open`), puts the folder at the last segment of the branch,
+validates like jw, runs `setup` before opening, can hand claude an initial task, and warns about unpushed commits
+when removing. From a terminal:
 
 ```sh
-bun ~/.config/herdr-app/mods/artifacts-jw/artifact.js publish informe.html --wait
+bun herdr/mods/worktree-wt/wt.js <branch> [--in <repo>] [--branch b] [--from ref] [--open shell|claude] [--task text]
 ```
 
-Sale un aviso y `cmd-shift-a` abre el panel: Abrir, Aprobar o Pedir cambios con una nota. `wait` vuelve con
-exit 0 si aprobaste, 4 si pediste cambios (la nota por stdout) y 3 si pasó el tiempo. Una persona puede tardar
-más que el límite de 10 minutos de la herramienta Bash: córrelo con `run_in_background` o con `--timeout`.
-Guarda hasta 20 versiones en `data/artifacts/`. No hay visor embebido: Abrir usa la app del sistema.
-También `ls`, `wait` y `rm`.
+A workspace's repos go to `<workspace>/worktrees/<repo>/<folder>`; the others, to `<repo>-wt/` according to
+`.jw.toml`. The workspace is recognised by the repo (even if its folder in `repos/` is a link elsewhere), not by the
+folder you launch from.
+
+### Tasks with a loop (`herdr/mods/factory-tasks` + `claude/skills/herdr-tasks`)
+
+`cmd-shift-t` opens the workspace's task list (jw's Markdown, one per folder). When the agent ends a turn it gets
+the next ready task, up to 20 laps or until everything is done or a task is blocked. The `n/m` counter shows in the
+bar. The `herdr-tasks` skill teaches the agent to write its plan there.
+
+### Artifacts to approve (`herdr/mods/artifacts-jw`)
+
+An agent publishes an `.html` or `.md` and waits for your decision:
+
+```sh
+bun ~/.config/herdr-app/mods/artifacts-jw/artifact.js publish report.html --wait
+```
+
+A notification appears and `cmd-shift-a` opens the panel: Open, Approve or Request changes with a note. `wait`
+returns exit 0 if you approved, 4 if you requested changes (the note on stdout) and 3 if time ran out. A person can
+take longer than the 10-minute limit of the Bash tool: run it with `run_in_background` or `--timeout`.
+It keeps up to 20 versions in `data/artifacts/`. There is no embedded viewer: Open uses the system's app.
+Also `ls`, `wait` and `rm`.
 
 ### Plugin `jw` (`claude/plugins/jw`)
 
-Skills de Claude Code, con el prefijo `jw:`:
+Claude Code skills, prefixed `jw:`:
 
-- `jw:tasks`: llevar un plan hasta el final con `jw tasks`.
-- `jw:role`: `/jw:role <rol>` pone a la sesión en un rol (`herdr-brain`, el orquestador que reparte el trabajo en worktrees; `herdr-researcher`, solo lectura con fuentes). Los roles son archivos `<nombre>.md` en tres capas, y gana la más cercana al proyecto: `.claude/roles/`, `~/.claude/roles/` y los del plugin. Los del plugin usan las herramientas de Herdr (`hc`, `wt.js`, `artifact.js`) y llevan el prefijo `herdr-` para que los `brain` y `researcher` de jw en `~/.claude/roles/` no los tapen.
+- `jw:tasks`: take a plan to the end with `jw tasks`.
+- `jw:role`: `/jw:role <role>` puts the session in a role (`herdr-brain`, the orchestrator that hands work out in worktrees; `herdr-researcher`, read-only with sources). Roles are `<name>.md` files in three layers, and the one closest to the project wins: `.claude/roles/`, `~/.claude/roles/` and the plugin's. The plugin's use Herdr's tools (`hc`, `wt.js`, `artifact.js`) and carry the `herdr-` prefix so that jw's `brain` and `researcher` in `~/.claude/roles/` do not shadow them. The roles are written in Spanish, like jw's.
 
 ```sh
 claude plugin marketplace add brya0x/herdr-jw
 claude plugin install jw@herdr-jw
 ```
 
-`install.sh` ya hace esto; las sesiones abiertas lo cargan con `/reload-plugins`.
+`install.sh` already does this; open sessions load it with `/reload-plugins`.
 
-### Temas para Herdr y Claude Code (`internals/themes/` + `herdr/mods/jw-settings`)
+### Themes for Herdr and Claude Code (`internals/themes/` + `herdr/mods/jw-settings`)
 
-Diez temas (One, Catppuccin, Tokyo Night, Gruvbox y Solarized, cada uno oscuro y claro) con una sola paleta por
-tema, de la que `build.py` saca el tema de Herdr y el de Claude Code (`~/.claude/themes/`). `cmd-shift-,` abre
-la pantalla de jw, sección **Tema**: **Claro**, **Oscuro** o **Sistema**, y qué tema oscuro y claro usar. En Sistema, Herdr sigue al
-sistema y el tema de Claude cambia con él. Claude usa siempre un solo tema, `JW` (`~/.claude/themes/jw.json`), que se reescribe con la paleta elegida; Claude Code repinta solo las sesiones abiertas cuando ese archivo cambia, trabajen o no. Una sesión que aún no usa `JW` se pasa a él una vez con `/theme` (teclas por `hc`, también si está trabajando) Se dejan quietas las que tienen texto escrito. Una sesión que se abrió antes de que existiera `~/.claude/themes/` no lista `JW` en su `/theme`: no se puede mover sola, y hay que reiniciarla a mano con `claude --resume`.
-Desde la terminal: `use.py mode light|dark|system`, `set <slug>` y `apply`.
+Ten themes (One, Catppuccin, Tokyo Night, Gruvbox and Solarized, each dark and light) with a single palette per
+theme, from which `build.py` makes the Herdr theme and the Claude Code one (`~/.claude/themes/`). `cmd-shift-,`
+opens the jw screen, **Theme** section: **Light**, **Dark** or **System**, and which dark and light theme to use. In
+System, Herdr follows the system and Claude's theme changes with it. Claude always uses a single theme, `JW`
+(`~/.claude/themes/jw.json`), rewritten with the chosen palette; Claude Code repaints the open sessions by itself
+when that file changes, working or not. A session that does not use `JW` yet is moved to it once with `/theme`
+(keys sent through `hc`, also if it is working). Sessions with text typed in are left alone. A session opened before
+`~/.claude/themes/` existed does not list `JW` in its `/theme`: it cannot be moved on its own and has to be restarted
+by hand with `claude --resume`.
+From a terminal: `use.py mode light|dark|system`, `set <slug>` and `apply`.
 
-### Navegación y layout
+### Navigation and layout
 
-- `herdr/layouts/jw.json`: clon de `main` sin la sección de agentes, con `tabs-one`.
-- `herdr/mods/tabs-one`: sin pestañas ni `+`, un solo tab por workspace; deja el nombre y los botones de ventana. El botón Diff abre el visor de diff en un pane a la derecha del agente; Files y Changes vienen apagados y se encienden en `cmd-shift-,` > Paneles.
-- `herdr/mods/spaces-one`: los worktrees cuelgan de su repo (o del workspace que lista ese repo), y `cmd-]` / `cmd-[` recorren los spaces en el orden del sidebar.
-- `herdr/mods/jw-diff` (botón **Diff** de la barra de arriba; el panel se titula `jw:diff`): el visor de diff de jw como un **pane** del layout. El botón divide el pane enfocado y abre este mod a su derecha (con el borde, el foco, el zoom y el swap de cualquier pane, la apariencia de Herdr y el font del terminal en el diff); pulsarlo otra vez lo cierra. El pane muestra la carpeta desde la que se abrió. Tres vistas: **Sin commit** (el árbol de trabajo contra `HEAD`), **Rama** (contra la rama base, `origin/main` o la que diga `origin/HEAD`) y **Commits** (se elige uno y salen sus archivos, con «‹ commits» para volver). El diff se ve **unificado** (una columna) o **lado a lado** como GitHub (lo viejo a la izquierda y lo nuevo a la derecha, con las líneas largas cortadas); el selector de la cabecera se acuerda de la elección. La lista de archivos va a la izquierda del diff (el botón ▥/▤ de la cabecera la pasa arriba y se acuerda de la elección). Cada archivo tiene su casilla de «visto», que se guarda en `data/diff-seen.json` y se apaga si el cambio del archivo cambia. Se refresca solo cuando cambia la carpeta. Solo lee: no escribe nada en `.git`. Sin portar de jw todavía: cambios por palabra, ajuste de líneas largas (en el modo unificado se hace scroll horizontal), selección de líneas con `V` y abrir un archivo en un visor.
-- `herdr/mods/picker-one`: selector de tabs y spaces (`cmd-p`).
-- `herdr/mods/jw-settings` (`cmd-shift-,`): una sola pantalla con lista a la izquierda, como los Settings de Herdr. **Tema** (claro, oscuro o sistema, y qué tema), **Costos** (costo y tokens por proyecto y por semana, de `~/.claude/projects`, mismas reglas de conteo que `usage.rs` de jw) y **Paneles** (qué botones salen en la barra de arriba: Diff encendido, Files y Changes apagados) y **Actualizar** (corre el `install.sh` publicado, sin tocar `keys.json`).
+- `herdr/layouts/jw.json`: a clone of `main` without the agents section, with `tabs-one`.
+- `herdr/mods/tabs-one`: no tabs and no `+`, one tab per workspace; it keeps the name and the window buttons. The Diff button opens the diff viewer in a pane beside the agent; Files and Changes ship off and are turned on in `cmd-shift-,` > Panels.
+- `herdr/mods/spaces-one`: worktrees hang from their repo (or from the workspace that lists that repo), and `cmd-]` / `cmd-[` walk the spaces in the sidebar's order.
+- `herdr/mods/jw-diff` (the **Diff** button of the top bar; the panel is titled `jw:diff`): jw's diff viewer as a layout **pane**. The button splits the focused pane and opens this mod to its right (with the border, focus, zoom and swap of any pane, Herdr's look and the terminal font in the diff); pressing it again closes it. The pane shows the folder it was opened from. Three views: **Uncommitted** (the working tree against `HEAD`), **Branch** (against the base branch: `origin/main` or whatever `origin/HEAD` says) and **Commits** (pick one and its files show, with "‹ commits" to go back). The diff is **unified** (one column) or **side by side** like GitHub (old on the left, new on the right, long lines cut); the selector in the header remembers the choice. The file list is on the left of the diff (the ▥/▤ button in the header moves it above and remembers the choice). Each file has a "seen" checkbox, kept in `data/diff-seen.json` and cleared when the file's change changes. It refreshes by itself when the folder changes. Read-only: it writes nothing under `.git`. Not ported from jw yet: word-level changes, wrapping long lines (in unified mode you scroll horizontally), picking lines with `V` and opening a file in a viewer.
+- `herdr/mods/picker-one`: tab and space picker (`cmd-p`).
+- `herdr/mods/jw-settings` (`cmd-shift-,`): one screen with a list on the left, like Herdr's Settings. **Theme** (light, dark or system, and which theme), **Costs** (cost and tokens per project and per week, from `~/.claude/projects`, same counting rules as jw's `usage.rs`), **Panels** (which buttons show in the top bar: Diff on, Files and Changes off) and **Update** (runs the published `install.sh`, without touching `keys.json`).
 
-## Atajos
+## Shortcuts
 
-| Atajo | Hace |
+| Shortcut | Does |
 |---|---|
-| `cmd-]` / `cmd-[` | Space siguiente / anterior, en el orden del sidebar |
-| `cmd-alt-]` / `cmd-alt-[` | Agente siguiente / anterior |
-| `cmd-shift-n` | Workspace nuevo (factory) |
-| `cmd-shift-v` | Panel de repos, productividad, gasto y detecciones |
-| `cmd-shift-t` | Tareas del workspace |
-| `cmd-shift-a` | Artifacts por aprobar |
-| `cmd-shift-,` | Pantalla de jw: Tema, Costos, Paneles y Actualizar (`Tab` o `1`-`4` cambian de sección) |
-| `cmd-p` | Selector de tabs y spaces |
+| `cmd-]` / `cmd-[` | Next / previous space, in the sidebar's order |
+| `cmd-alt-]` / `cmd-alt-[` | Next / previous agent |
+| `cmd-shift-n` | New workspace (factory) |
+| `cmd-shift-v` | Repos, productivity, spend and detections panel |
+| `cmd-shift-t` | The workspace's tasks |
+| `cmd-shift-a` | Artifacts to approve |
+| `cmd-shift-,` | jw screen: Theme, Costs, Panels and Update (`Tab` or `1`-`4` switch section) |
+| `cmd-p` | Tab and space picker |
 
-Todos salen de `herdr/config/keys.json`.
+They all come from `herdr/config/keys.json`.
 
-## Tarifas
+## Rates
 
-El costo muestra «sin tarifa» hasta que escribas `~/.config/herdr-app/data/factory-rates.json`
-(USD por millón de tokens): `{"opus": {"input": …, "cache_read": …, "output": …}}`. No hay valores por defecto.
+Cost shows "no rate" until you write `~/.config/herdr-app/data/factory-rates.json`
+(USD per million tokens): `{"opus": {"input": …, "cache_read": …, "output": …}}`. There are no defaults.
 
-## Diferencias con jw
+## Differences from jw
 
-- `[[env]] file = ".env"` se trata como `copy` (jw actual lo ignora).
-- Los ajustes se leen como en jw: el `.jw.toml` del repo y, si no existe, el archivo personal `~/.config/jw/projects/<origen>.toml` (el primero que existe es el único que se lee). `ports`, `[dev]` y `[layout]` se ignoran, y `branch` y `workspace` también (jw tampoco los usa).
-- Una rama nueva parte de `HEAD`, como en jw.
-- Tras un `setup`, la tarea se pasa a claude como primer argumento (Herdr solo entrega `task` si `argv` es `claude`).
-- Sin `agents`, `cmd-alt-]` y `cmd-alt-[` pueden no seguir ninguna lista (sin probar).
+- `[[env]] file = ".env"` is treated as `copy` (current jw ignores it).
+- Settings are read like jw does: the repo's `.jw.toml` and, if it does not exist, the personal file `~/.config/jw/projects/<origin>.toml` (the first that exists is the only one read). `ports`, `[dev]` and `[layout]` are ignored, and so are `branch` and `workspace` (jw does not use them either).
+- A new branch starts from `HEAD`, as in jw.
+- After a `setup`, the task is passed to claude as its first argument (Herdr only delivers `task` if `argv` is `claude`).
+- Without `agents`, `cmd-alt-]` and `cmd-alt-[` may follow no list (untested).
 
-## Pruebas
+## Tests
 
 ```sh
-bun herdr/mods/worktree-wt/jwtoml.test.js     # lee .jw.toml reales de un repo tuyo: la ruta está al inicio del test
+bun herdr/mods/worktree-wt/jwtoml.test.js     # reads real .jw.toml files from a repo of yours: the path is at the top of the test
 bun herdr/mods/artifacts-jw/artifact.test.js
 bun herdr/mods/factory-tasks/lib.test.js
 bun herdr/mods/jw-diff/lib.test.js
@@ -180,7 +186,7 @@ python3 herdr/mods/factory/test_flow.py
 python3 -I herdr/mods/jw-settings/test_usage.py
 ```
 
-`herdr-app check herdr/mods/<nombre>` solo dibuja el estado inicial: mira siempre `herdr-app shot`.
-Sin probar con clics: el selector shell/claude y el campo de tarea del diálogo, los botones del panel de
-artifacts, los avisos de PR mergeado y CI fallido.
-Claude pregunta «¿confías en esta carpeta?» en una carpeta nueva; si pasa en cada worktree, la tarea espera a que aceptes.
+`herdr-app check herdr/mods/<name>` only draws the initial state: always look at `herdr-app shot`.
+Untested with clicks: the shell/claude selector and the task field of the dialog, the artifacts panel buttons, the
+merged-PR and failing-CI notifications.
+Claude asks "do you trust this folder?" in a new folder; if it happens in every worktree, the task waits until you accept.

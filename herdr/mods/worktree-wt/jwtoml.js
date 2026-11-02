@@ -4,7 +4,7 @@
 
 function unquote(raw, fail) {
   const q = raw[0];
-  if (raw.length < 2 || raw[raw.length - 1] !== q) fail("cadena sin cerrar");
+  if (raw.length < 2 || raw[raw.length - 1] !== q) fail("unterminated string");
   const body = raw.slice(1, -1);
   if (q === "'") return body;
   return body.replace(/\\(["\\ntr])/g, (_m, c) => ({ n: "\n", t: "\t", r: "\r" })[c] ?? c);
@@ -21,7 +21,7 @@ function items(text, fail) {
     else if (c === ",") { out.push(cur.trim()); cur = ""; }
     else cur += c;
   }
-  if (q) fail("cadena sin cerrar");
+  if (q) fail("unterminated string");
   if (cur.trim()) out.push(cur.trim());
   return out.filter(Boolean).map((v) => value(v, fail));
 }
@@ -32,7 +32,7 @@ function value(raw, fail) {
   if (/^-?\d+(\.\d+)?$/.test(raw)) return Number(raw);
   if (raw === "true" || raw === "false") return raw === "true";
   if (raw[0] === "{" && raw.endsWith("}")) return undefined; // an inline table ([[env]] set, [layout] leaves): jw does not use it either
-  fail(`valor no soportado: ${raw}`);
+  fail(`unsupported value: ${raw}`);
 }
 
 // Drops a # comment that is not inside a string.
@@ -52,19 +52,19 @@ export function parse(text) {
   let table = null, last = null;
   const lines = text.split("\n");
   for (let n = 0; n < lines.length; n++) {
-    const fail = (why) => { throw new Error(`.jw.toml, línea ${n + 1}: ${why}`); };
+    const fail = (why) => { throw new Error(`.jw.toml, line ${n + 1}: ${why}`); };
     const line = uncomment(lines[n]).trim();
     if (!line) continue;
     const head = line.match(/^\[\[?\s*([^\]]+?)\s*\]\]?$/);
     if (head) { table = head[1]; last = line.startsWith("[[") && table === "env" ? (env.push({}), env[env.length - 1]) : null; continue; }
     const eq = line.indexOf("=");
-    if (eq < 1) fail("se esperaba clave = valor");
+    if (eq < 1) fail("expected key = value");
     const key = line.slice(0, eq).trim();
     let raw = line.slice(eq + 1).trim();
-    if (raw.startsWith('"""') || raw.startsWith("'''")) fail("las cadenas de varias líneas no están soportadas");
+    if (raw.startsWith('"""') || raw.startsWith("'''")) fail("multi-line strings are not supported");
     if (raw.startsWith("[")) { // an array may run over several lines
       let at = n;
-      while (!/\]\s*$/.test(raw)) { if (++at >= lines.length) fail("array sin cerrar"); raw += " " + uncomment(lines[at]).trim(); }
+      while (!/\]\s*$/.test(raw)) { if (++at >= lines.length) fail("unterminated array"); raw += " " + uncomment(lines[at]).trim(); }
       n = at;
       const v = items(raw.slice(1, raw.lastIndexOf("]")), fail);
       if (table === null) top[key] = v;
@@ -80,17 +80,17 @@ export function parse(text) {
 
 const strings = (v, key) => {
   if (v === undefined) return [];
-  if (!Array.isArray(v) || v.some((x) => typeof x !== "string")) throw new Error(`.jw.toml: ${key} debe ser una lista de textos`);
+  if (!Array.isArray(v) || v.some((x) => typeof x !== "string")) throw new Error(`.jw.toml: ${key} must be a list of strings`);
   return v;
 };
 
 function config(top, env, ports) {
   const setup = strings(top.setup, "setup").map((l) => l.trim()).filter(Boolean);
-  for (const l of setup) for (const m of l.match(/\{[^}]*\}/g) ?? []) if (m !== "{name}" && m !== "{branch}") throw new Error(`.jw.toml: setup solo admite {name} y {branch}, no ${m}`);
+  for (const l of setup) for (const m of l.match(/\{[^}]*\}/g) ?? []) if (m !== "{name}" && m !== "{branch}") throw new Error(`.jw.toml: setup only accepts {name} and {branch}, not ${m}`);
   const copy = [...new Set([...strings(top.copy, "copy"), ...env.map((e) => e.file).filter((f) => typeof f === "string")])];
-  for (const p of copy) if (p.startsWith("/") || p.split("/").includes("..")) throw new Error(`.jw.toml: copy debe quedar dentro del repo: ${p}`);
-  if (top.open !== undefined && top.open !== "shell" && top.open !== "claude") throw new Error('.jw.toml: open debe ser "shell" o "claude"');
-  if (top.root !== undefined && typeof top.root !== "string") throw new Error(".jw.toml: root debe ser un texto");
+  for (const p of copy) if (p.startsWith("/") || p.split("/").includes("..")) throw new Error(`.jw.toml: copy must stay inside the repo: ${p}`);
+  if (top.open !== undefined && top.open !== "shell" && top.open !== "claude") throw new Error('.jw.toml: open must be "shell" or "claude"');
+  if (top.root !== undefined && typeof top.root !== "string") throw new Error(".jw.toml: root must be a string");
   return { root: (top.root ?? "").trim(), setup, copy, open: top.open ?? "shell", ports };
 }
 

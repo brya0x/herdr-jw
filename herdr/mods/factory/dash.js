@@ -14,7 +14,7 @@ const STAGES = ["none", "open", "failed", "merged", "closed"];
 const NAMES = Object.fromEntries(KINDS); // all, open, merged, failed, closed, none -> label
 const barColor = (t, k) => ({ merged: t.ansi5, open: t.ansi4, failed: t.blocked, closed: t.dim })[k] ?? t.border;
 const textColor = (t, k) => ({ merged: t.ansi5, open: t.ansi4, failed: t.blocked, closed: t.dim })[k] ?? t.muted;
-const srcColor = (t, k) => ({ agente: t.blocked, setup: t.working, fábrica: t.ansi1 ?? t.blocked })[k] ?? t.dim;
+const srcColor = (t, k) => ({ agent: t.blocked, setup: t.working, factory: t.ansi1 ?? t.blocked })[k] ?? t.dim;
 
 const head = (t, title, hint) => h_flex().gap(8).items_center().px(2)
   .child(div().text_size(14).font_semibold().text_color(t.foreground).child(title))
@@ -86,7 +86,7 @@ function line(v, t, runs) {
     .child(div().text_size(12.5).text_color(dim ? t.dim : t.muted).child(String(counts[k])));
   return v_flex().p(14).gap(10).rounded(10).bg(t.raised).border(1).border_color(t.border)
     .child(h_flex().items_center().gap(8)
-      .child(div().flex_1().text_size(14).font_semibold().text_color(t.foreground).child("La fábrica"))
+      .child(div().flex_1().text_size(14).font_semibold().text_color(t.foreground).child("The factory"))
       .child(div().text_size(11.5).text_color(t.dim).child(`${runs.length} worktrees`)))
     .child(runs.length
       ? h_flex().h(10).w_full().gap(2).rounded(5).overflow_hidden().children(STAGES.filter((k) => counts[k]).map((k) => div().id(`seg-${k}`).h(10).flex_grow(counts[k]).flex_basis(10).bg(barColor(t, k)).cursor_pointer().on_click(pick(k))))
@@ -101,26 +101,26 @@ function agentsList(v, t) {
   const mine = agents().filter((a) => { const sp = spaces().find((x) => x.id === a.space); return sp && paths.some((p) => inside(sp.folder, p)); });
   const dot = { working: t.working, blocked: t.blocked, done: t.done, idle: t.dim };
   return v_flex().gap(8)
-    .child(head(t, "Agentes ahora", String(mine.length)))
+    .child(head(t, "Agents now", String(mine.length)))
     .child(box(t, ...(mine.length ? mine.map((a, i) => {
       const folder = spaces().find((x) => x.id === a.space)?.folder;
       return item(t, `ag-${i}`, { icon: div().text_color(dot[a.status] ?? t.dim).child("●"), title: a.space_name, sub: (folder ?? "").split("/").slice(-2).join("/"), status: a.status, color: dot[a.status] ?? t.dim, tokens: v.cost([folder]), onClick: () => run("space.select", { id: a.space }) }, i === 0);
-    }) : [note(t, "ningún agente abierto en este workspace")])));
+    }) : [note(t, "no agent open in this workspace")])));
 }
 
 function runsList(v, t, runs) {
   const shown = runs.filter((r) => v.kind === "all" || (r.pr?.kind ?? "none") === v.kind);
   const groups = [...new Set(shown.map((r) => r.repo))];
   const icon = (k) => (k === "open" ? div().frames(SPIN, 90).text_color(t.ansi4) : div().text_color(barColor(t, k)).child({ merged: "✓", failed: "⚠", closed: "○" }[k] ?? "·"));
-  const word = { merged: "mergeado", open: "abierto", failed: "CI falló", closed: "cerrado" };
+  const word = { merged: "merged", open: "open", failed: "CI failed", closed: "closed" };
   return v_flex().gap(8)
-    .child(head(t, "Worktrees", v.kind === "all" ? String(runs.length) : `${NAMES[v.kind]} · ${shown.length} de ${runs.length}`))
-    .child(box(t, ...(!shown.length ? [note(t, runs.length ? "ningún worktree en este estado" : "sin worktrees todavía: créalos desde la pestaña Repos")] : groups.flatMap((g, gi) => [
+    .child(head(t, "Worktrees", v.kind === "all" ? String(runs.length) : `${NAMES[v.kind]} · ${shown.length} of ${runs.length}`))
+    .child(box(t, ...(!shown.length ? [note(t, runs.length ? "no worktree in this state" : "no worktrees yet: create them from the Repos tab")] : groups.flatMap((g, gi) => [
       h_flex().px(12).py(5).bg(t.hover).when(gi > 0, (el) => el.border_t(1).border_color(t.border)).text_size(11.5).text_color(t.muted)
         .child(div().flex_1().font_semibold().child(g)).child(div().child(`${shown.filter((r) => r.repo === g).length}`)),
       ...shown.filter((r) => r.repo === g).map((r, i) => {
         const k = r.pr?.kind ?? "none", raw = v.runTokensRaw(r.path);
-        return item(t, `run-${g}-${i}`, { icon: icon(k), title: r.branch, sub: r.pr ? `PR #${r.pr.number}` : "sin PR todavía", status: word[k] ?? "sin PR", color: textColor(t, k), tokens: raw ? `${v.runTokens(r.path)} tokens` : "", onClick: () => v.openWt(r) }, i === 0);
+        return item(t, `run-${g}-${i}`, { icon: icon(k), title: r.branch, sub: r.pr ? `PR #${r.pr.number}` : "no PR yet", status: word[k] ?? "no PR", color: textColor(t, k), tokens: raw ? `${v.runTokens(r.path)} tokens` : "", onClick: () => v.openWt(r) }, i === 0);
       }),
     ]))));
 }
@@ -132,12 +132,12 @@ export function productivity(v, t) {
   return v_flex().gap(18)
     .child(line(v, t, runs))
     .child(h_flex().flex_wrap().gap(20).px(2)
-      .child(stat(t, wait(s?.humans != null ? s.humans.toFixed(0) : "—"), "veces que hablaste por PR", `promedio · ${period}`))
-      .child(stat(t, wait(s?.ship ? dur(s.ship) : "—"), "de tu primer mensaje al merge", s?.toPr ? `al PR ${dur(s.toPr)}${s.review ? ` · del PR al merge ${dur(s.review)}` : ""}` : "mediana de los PRs mergeados"))
-      .child(stat(t, wait(s?.n ? fmt(s.tokens) : "—"), "tokens por PR", s?.n ? (s.cost === null ? "sin tarifa para dólares" : `~$${s.cost.toFixed(2)} por PR`) : "sin PRs mergeados en el periodo")))
+      .child(stat(t, wait(s?.humans != null ? s.humans.toFixed(0) : "—"), "times you spoke per PR", `average · ${period}`))
+      .child(stat(t, wait(s?.ship ? dur(s.ship) : "—"), "from your first message to the merge", s?.toPr ? `to the PR ${dur(s.toPr)}${s.review ? ` · PR to merge ${dur(s.review)}` : ""}` : "median of the merged PRs"))
+      .child(stat(t, wait(s?.n ? fmt(s.tokens) : "—"), "tokens per PR", s?.n ? (s.cost === null ? "no rate for dollars" : `~$${s.cost.toFixed(2)} per PR`) : "no merged PRs in the period")))
     .child(h_flex().flex_wrap().gap(20).px(2).items_start()
       .child(v_flex().flex_grow(1).flex_basis(260).gap(8)
-        .child(head(t, "Pull requests", "por semana"))
+        .child(head(t, "Pull requests", "per week"))
         .child(m ? bars(t, m.pw.map((w, i) => ({ label: wk(lastWeeks(6)[i]), pair: [{ v: w.opened, color: t.ansi4 }, { v: w.merged, color: t.ansi5 }] })), 44) : note(t, "…"))
         .child(legend(t, [[t.ansi4, "abiertos"], [t.ansi5, "mergeados"]])))
       .child(v_flex().flex_grow(1).flex_basis(260).gap(8)
@@ -150,18 +150,18 @@ export function productivity(v, t) {
 
 export function spending(v, t) {
   const m = metrics(v), d = v.usage;
-  if (!m) return note(t, v.usageError || "leyendo los transcripts… (la primera vez tarda unos segundos)");
+  if (!m) return note(t, v.usageError || "reading the transcripts… (the first time takes a few seconds)");
   const top = m.models[0];
   const runs = v.runs().map((r) => ({ ...r, tokens: v.runTokensRaw(r.path) })).filter((r) => r.tokens).sort((a, b) => b.tokens - a.tokens).slice(0, 6);
   const wmax = Math.max(1, ...runs.map((r) => r.tokens));
   const period = PERIODS.find(([k]) => k === v.period)[1];
-  const rate = d.unrated.length ? `Sin tarifa para: ${d.unrated.join(", ")}. Escríbelas (USD por millón de tokens) en ~/.config/herdr-app/data/factory-rates.json, por ejemplo {"opus": {"input": …, "cache_read": …, "output": …}}. El costo es una estimación, no la factura.` : "El costo es una estimación con tus tarifas, no la factura.";
+  const rate = d.unrated.length ? `No rate for: ${d.unrated.join(", ")}. Write them (USD per million tokens) in ~/.config/herdr-app/data/factory-rates.json, for example {"opus": {"input": …, "cache_read": …, "output": …}}. The cost is an estimate, not the invoice.` : "The cost is an estimate with your rates, not the invoice.";
   return v_flex().gap(18)
     .child(h_flex().flex_wrap().gap(20).px(2)
       .child(stat(t, fmt(m.total.tokens), "tokens consumidos", `${period} · ${show(m.total).split(" · ")[1] ?? "—"}`))
-      .child(stat(t, m.s.n ? fmt(m.s.tokens) : "—", "tokens por PR", m.s.n ? (m.s.cost === null ? "sin tarifa para dólares" : `~$${m.s.cost.toFixed(2)} por PR`) : "sin PRs mergeados"))
-      .child(stat(t, top ? top.family : "—", "modelo dominante", top ? `${Math.round((top.tokens / m.total.tokens) * 100)}% de los tokens` : "sin uso")))
-    .child(v_flex().gap(8).child(head(t, "Por modelo", period))
+      .child(stat(t, m.s.n ? fmt(m.s.tokens) : "—", "tokens per PR", m.s.n ? (m.s.cost === null ? "no rate for dollars" : `~$${m.s.cost.toFixed(2)} per PR`) : "no merged PRs"))
+      .child(stat(t, top ? top.family : "—", "top model", top ? `${Math.round((top.tokens / m.total.tokens) * 100)}% of the tokens` : "no usage")))
+    .child(v_flex().gap(8).child(head(t, "By model", period))
       .child(box(t, ...m.models.map((x, i) => h_flex().px(12).py(8).gap(10).items_center().when(i > 0, (el) => el.border_t(1).border_color(t.border))
         .child(div().flex_none().w(8).h(8).rounded(2).bg(famColor(t, x.family)))
         .child(div().flex_none().w(64).text_color(t.foreground).child(x.family))
@@ -169,14 +169,14 @@ export function spending(v, t) {
         .child(div().flex_none().w(40).text_right().text_size(12).text_color(t.muted).child(`${Math.round((x.tokens / m.total.tokens) * 100)}%`))
         .child(div().flex_none().w(56).text_right().text_color(t.foreground).child(fmt(x.tokens)))
         .child(div().flex_none().w(84).text_right().text_size(12).text_color(t.muted).child(show(x).split(" · ")[1] ?? "—"))))))
-    .child(v_flex().gap(8).px(2).child(head(t, "Tokens por semana", "últimas 8"))
+    .child(v_flex().gap(8).px(2).child(head(t, "Tokens per week", "last 8"))
       .child(bars(t, m.weeks.map((w) => ({ label: wk(w.week), stack: m.models.map((x) => ({ v: w.by[x.family] ?? 0, color: famColor(t, x.family) })) })), 70))
       .child(legend(t, m.models.map((x) => [famColor(t, x.family), x.family]))))
-    .child(v_flex().gap(8).child(head(t, "Mayores consumos", "todo el tiempo"))
+    .child(v_flex().gap(8).child(head(t, "Biggest consumers", "all time"))
       .child(box(t, ...(runs.length ? runs.map((r, i) => h_flex().id(`top-${i}`).px(12).py(8).gap(10).items_center().cursor_pointer().hover((x) => x.bg(t.selected)).on_click(() => v.openWt(r)).when(i > 0, (el) => el.border_t(1).border_color(t.border))
         .child(div().flex_none().w("40%").truncate().text_size(13).text_color(t.foreground).child(r.branch))
         .child(div().flex_1().min_w(0).child(div().h(8).rounded(4).bg(barColor(t, r.pr?.kind ?? "none")).w(`${(r.tokens / wmax) * 100}%`)))
-        .child(div().flex_none().w(56).text_right().text_size(12).text_color(t.muted).child(fmt(r.tokens)))) : [note(t, "ningún worktree ha gastado todavía")]))))
+        .child(div().flex_none().w(56).text_right().text_size(12).text_color(t.muted).child(fmt(r.tokens)))) : [note(t, "no worktree has spent anything yet")]))))
     .child(div().px(2).text_size(11.5).text_color(t.dim).child(rate));
 }
 
@@ -184,17 +184,17 @@ export function spending(v, t) {
 // from there an agent can be sent to fix it. Findings come from stats.js `findings`, via v.found().
 export function detecciones(v, t) {
   const found = v.found();
-  const hint = { agente: "comandos que fallaron y nadie arregló", setup: "el setup de un worktree salió con error", fábrica: "repos, gh y lectura del uso" };
+  const hint = { agent: "commands that failed and nobody fixed", setup: "a worktree's setup exited with an error", factory: "repos, gh and the usage reading" };
   return v_flex().gap(18)
     .child(h_flex().flex_wrap().gap(20).px(2).children(SOURCES.map(([k, label]) => { const n = found.filter((x) => x.source === k).length; return stat(t, String(n), label, hint[k], n ? srcColor(t, k) : t.dim); })))
-    .child(v_flex().gap(8).child(head(t, "Para revisar", found.length ? `${found.length} · últimos 7 días` : ""))
+    .child(v_flex().gap(8).child(head(t, "To review", found.length ? `${found.length} · last 7 days` : ""))
       .child(box(t, ...(found.length ? found.flatMap((x, i) => [
-        item(t, `det-${i}`, { icon: div().text_color(srcColor(t, x.source)).child("⚠"), title: x.title, sub: `${x.sub}${x.age ? ` · hace ${dur(x.age)}` : ""}`, status: x.source, color: srcColor(t, x.source), onClick: (_e, cx) => { v.open = v.open === x.id ? null : x.id; cx.notify(); } }, i === 0),
+        item(t, `det-${i}`, { icon: div().text_color(srcColor(t, x.source)).child("⚠"), title: x.title, sub: `${x.sub}${x.age ? ` · ${dur(x.age)} ago` : ""}`, status: x.source, color: srcColor(t, x.source), onClick: (_e, cx) => { v.open = v.open === x.id ? null : x.id; cx.notify(); } }, i === 0),
         ...(v.open === x.id ? [v_flex().px(12).py(10).gap(8).bg(t.hover).border_t(1).border_color(t.border)
           .child(v_flex().gap(1).children(x.detail.split("\n").slice(0, 14).map((l) => div().text_size(11.5).text_color(t.muted).child(l || " "))))
           .child(h_flex().gap(6)
-            .child(btn(`fix-${i}`, "Arreglar con un agente", () => v.fix(x), { accent: true }))
-            .when(Boolean(x.path), (el) => el.child(btn(`see-${i}`, "Ver worktree", () => v.openWt({ path: x.path }))))
-            .child(btn(`drop-${i}`, "Descartar", (_e, cx) => v.dismiss(x, cx))))] : []),
-      ]) : [note(t, "nada por revisar: ningún agente terminó fallando y la fábrica está sana")]))));
+            .child(btn(`fix-${i}`, "Fix with an agent", () => v.fix(x), { accent: true }))
+            .when(Boolean(x.path), (el) => el.child(btn(`see-${i}`, "Open worktree", () => v.openWt({ path: x.path }))))
+            .child(btn(`drop-${i}`, "Dismiss", (_e, cx) => v.dismiss(x, cx))))] : []),
+      ]) : [note(t, "nothing to review: no agent ended up failing and the factory is healthy")]))));
 }

@@ -115,7 +115,7 @@ export default class Worktree extends View {
     this.input.on("change", (_e, cx) => { this.text = this.input.value(); this.error = ""; this.at = 0; cx.notify(); });
     this.input.on("submit", (_e, cx) => this.go(cx));
     this.task = "";
-    this.taskInput = InputState.new({ value: "", placeholder: "tarea para claude (opcional)" });
+    this.taskInput = InputState.new({ value: "", placeholder: "task for claude (optional)" });
     this.taskInput.on("change", (_e, cx) => { this.task = this.taskInput.value(); cx.notify(); });
     this.taskInput.on("submit", (_e, cx) => this.go(cx));
     this.inputFocused = true;
@@ -212,23 +212,23 @@ export default class Worktree extends View {
   // The creation of jw (workspaces.rs create_worktree, start.rs start_workspace): same names, same git, same order.
   async create() {
     const branch = this.text.trim();
-    if (!branch) return "Escribe el nombre de la rama.";
-    if (!this.cfg) return this.cfgError || "Leyendo .jw.toml…";
-    if (branch.startsWith("-") || !(await git(this.repo.top, ["check-ref-format", "--branch", branch], this.on)).ok) return `«${branch}» no es un nombre de rama válido.`;
+    if (!branch) return "Type the branch name.";
+    if (!this.cfg) return this.cfgError || "Reading .jw.toml…";
+    if (branch.startsWith("-") || !(await git(this.repo.top, ["check-ref-format", "--branch", branch], this.on)).ok) return `"${branch}" is not a valid branch name.`;
     const folder = folderOf(branch);
-    if (!validFolder(folder)) return `«${folder}» no sirve de nombre de carpeta (una sola pieza, hasta 80 letras, sin / ni \\).`;
+    if (!validFolder(folder)) return `"${folder}" is not usable as a folder name (one piece, up to 80 characters, no / or \\).`;
     const dest = `${this.root || rootOf(this.cfg, this.repo.main, this.userHome)}/${folder}`;
-    if ((await exec("sh", ["-c", '[ -e "$1" ] || [ -L "$1" ]', "sh", dest], { on: this.on })).code === 0) return `Ya existe ${tilde(dest, this.userHome)}.`;
+    if ((await exec("sh", ["-c", '[ -e "$1" ] || [ -L "$1" ]', "sh", dest], { on: this.on })).code === 0) return `${tilde(dest, this.userHome)} already exists.`;
     const exists = (await git(this.repo.main, ["show-ref", "--verify", "--quiet", `refs/heads/${branch}`], this.on)).ok;
     // an existing branch is checked out as it is; a new one starts from HEAD, as in jw
     const r = await git(this.repo.top, exists ? ["worktree", "add", dest, branch] : ["worktree", "add", "-b", branch, dest, "HEAD"], this.on);
-    if (!r.ok) return r.err || "git worktree add falló.";
+    if (!r.ok) return r.err || "git worktree add failed.";
     const skipped = [];
     for (const rel of this.cfg.copy) {
       const c = await exec("sh", ["-c", '[ -e "$1/$3" ] || exit 3; mkdir -p "$(dirname "$2/$3")" && cp -R "$1/$3" "$2/$3"', "sh", this.repo.main, dest, rel], { on: this.on });
       if (c.code !== 0) skipped.push(rel);
     }
-    if (skipped.length) notify({ title: "Worktree creado", body: `No se copió: ${skipped.join(", ")}`, level: "warning" });
+    if (skipped.length) notify({ title: "Worktree created", body: `Not copied: ${skipped.join(", ")}`, level: "warning" });
     const task = this.task.trim();
     const claude = this.openMode === "claude" || Boolean(task);
     const setup = setupScript(this.cfg, folder, branch);
@@ -359,7 +359,7 @@ export default class Worktree extends View {
     const remove = props()?.action === "remove";
     const s = this.space();
     const r = this.repo;
-    const title = remove ? `Quitar worktree ${s?.name || this.repo?.top?.split("/").pop() || ""}?` : `New worktree${r ? ` of ${r.name}` : ""}`;
+    const title = remove ? `Remove worktree ${s?.name || this.repo?.top?.split("/").pop() || ""}?` : `New worktree${r ? ` of ${r.name}` : ""}`;
     const detail =
       r === undefined
         ? "…"
@@ -369,7 +369,7 @@ export default class Worktree extends View {
             ? !r.linked
               ? "This is the repository's main checkout, not a worktree."
               : `Closes the space and deletes ${tilde(r.top, this.userHome)}. The branch stays.`
-            : `Un space nuevo en ${tilde(this.root || rootOf(this.cfg ?? { root: "" }, r.main, this.userHome), this.userHome)}/<carpeta>. Una rama que existe se usa tal cual; una nueva parte de HEAD. La carpeta es el último segmento del nombre.`;
+            : `A new space in ${tilde(this.root || rootOf(this.cfg ?? { root: "" }, r.main, this.userHome), this.userHome)}/<folder>. An existing branch is used as it is; a new one starts from HEAD. The folder is the last segment of the name.`;
     const blocked = !r || (remove && !r.linked);
     return v_flex()
       .id("worktree")
@@ -383,7 +383,7 @@ export default class Worktree extends View {
       .child(div().font_semibold().text_color(t.foreground).child(title))
       .child(div().text_color(t.muted).child(detail))
       .when(remove && this.dirty, (el) => el.child(div().text_color(t.blocked).child("It has uncommitted changes: they will be lost.")))
-      .when(remove && this.ahead > 0, (el) => el.child(div().text_color(t.blocked).child(`Tiene ${this.ahead} commit${this.ahead === 1 ? "" : "s"} que ningún remoto tiene. La rama se queda, así que no se pierden, pero no están subidos.`)))
+      .when(remove && this.ahead > 0, (el) => el.child(div().text_color(t.blocked).child(`It has ${this.ahead} commit${this.ahead === 1 ? "" : "s"} that no remote has. The branch stays, so they are not lost, but they are not pushed.`)))
       .when(remove && this.unpushed.length > 0, (el) => el.child(div().text_color(t.blocked).child(`Submodule ${this.unpushed.join(", ")} has commits that aren't pushed anywhere: they will be lost.`)))
       .when(!remove && !blocked, (el) =>
         el.child(
@@ -401,7 +401,7 @@ export default class Worktree extends View {
       .when(!remove && !blocked && !this.cfgError && this.cfg, (el) => el
         .child(Input.new(this.taskInput).h(32).px(10).items_center().rounded(6).border(1).border_color(t.input).bg(t.background).text_color(t.foreground))
         .child(h_flex().gap(6).items_center()
-          .child(div().text_size(12).text_color(t.dim).child("abrir con"))
+          .child(div().text_size(12).text_color(t.dim).child("open with"))
           .children(["shell", "claude"].map((m) => div().id(`open-${m}`).px(8).py(2).rounded(5).cursor_pointer().text_size(12)
             .text_color(this.openMode === m || (m === "claude" && this.task.trim()) ? t.foreground : t.dim)
             .when(this.openMode === m || (m === "claude" && this.task.trim()), (el) => el.bg(t.selected)).when(this.openMode !== m, (el) => el.hover((x) => x.bg(t.hover)))

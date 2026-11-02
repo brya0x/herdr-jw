@@ -14,15 +14,15 @@ t = parse("- [x] a x\n- [ ] b x\n- [ ] c x\n- [ ] fin x\n");
 assert.equal(pick(t).task.id, "b");
 t[1].status = "done"; assert.equal(pick(t).task.id, "c");
 t[2].status = "done"; assert.equal(pick(t).task.id, "fin");
-t[3].status = "done"; assert.equal(pick(t).stop, "todo listo");
+t[3].status = "done"; assert.equal(pick(t).stop, "all done");
 
 // a blocked task stops the loop and keeps its reason
 t = parse("- [!] a x\n  why: falta la clave\n- [ ] b x\n");
-assert.equal(pick(t).stop, "tarea bloqueada"); assert.equal(t[0].why, "falta la clave");
+assert.equal(pick(t).stop, "task blocked"); assert.equal(t[0].why, "falta la clave");
 
 // a dependency that never comes stops it instead of spinning
-assert.match(pick(parse("- [ ] a x (after: zz)\n")).stop, /ninguna/);
-assert.equal(pick(parse("")).stop, "no hay lista");
+assert.match(pick(parse("- [ ] a x (after: zz)\n")).stop, /no task is ready/);
+assert.equal(pick(parse("")).stop, "no list");
 
 // withFinal adds fin once
 const w = withFinal("- [ ] a x"); assert.equal(withFinal(w), w); assert.ok(w.endsWith(`- [ ] fin ${FINAL}\n`));

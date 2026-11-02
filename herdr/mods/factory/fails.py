@@ -2,7 +2,7 @@
 """The shell commands claude failed on in each folder, recently.
 
 fails.py DIR...  ->  JSON on stdout: {DIR: [{"ts", "cmd", "err", "kind", "count"}]}, newest first, at most 8 each.
-kind "pendiente": the session's last tool call failed, so nobody fixed it. kind "repetido": the same command failed 3+ times.
+kind "pending": the session's last tool call failed, so nobody fixed it. kind "repeated": the same command failed 3+ times.
 An exit code with no message ("Exit code 1" alone: grep with no match, a test that said nothing) and a call the harness refused are not failures here.
 """
 import json, os, re, sys, time
@@ -69,7 +69,7 @@ def of_dir(folder, since):
         ts, cmd, err, _ = items[-1]
         last = any(i[3] for i in items)
         if last or len(items) >= REPEATS:
-            rows.append({"ts": ts, "cmd": cmd[:300], "err": err[:600], "kind": "pendiente" if last else "repetido", "count": len(items)})
+            rows.append({"ts": ts, "cmd": cmd[:300], "err": err[:600], "kind": "pending" if last else "repeated", "count": len(items)})
     return sorted(rows, key=lambda r: r["ts"], reverse=True)[:8]
 
 

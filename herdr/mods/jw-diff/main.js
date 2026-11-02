@@ -1,13 +1,13 @@
 // The Diff pane (the Diff button of the tab bar splits a pane beside the focused one with this mod, so it has a pane's border, focus, zoom
-// and swap): what the folder it was opened from has changed, in three views like jw's diff viewer: Sin commit (the working tree against
-// HEAD), Rama (the branch against its base) and Commits (one commit's files). Each file can be marked as seen (kept in data/diff-seen.json
+// and swap): what the folder it was opened from has changed, in three views like jw's diff viewer: Uncommitted (the working tree against
+// HEAD), Branch (the branch against its base) and Commits (one commit's files). Each file can be marked as seen (kept in data/diff-seen.json
 // until its change differs). Drawn with Herdr's own look and the terminal font Herdr is set to. Read-only: it never writes under .git.
 import { View, div } from "gpui-kit";
 import { v_flex, h_flex, Scrollbar, v_virtual_list } from "gpui-base";
 import { spaces, panes, focused, exec, readTextFile, writeTextFile, watchFolder, theme, settings, appHome, props, shared, setShared } from "herdr";
 import { parseNumstat, parseStatus, parseNameStatus, parseLog, chooseBase, diffRows, splitRows, signature, seenKey, isSeen, ago } from "./lib.js";
 
-const SCOPES = [["work", "Sin commit"], ["branch", "Rama"], ["commits", "Commits"]];
+const SCOPES = [["work", "Uncommitted"], ["branch", "Branch"], ["commits", "Commits"]];
 const MAX_LINES = 1500;
 
 function location() {
@@ -62,7 +62,7 @@ export default class Diff extends View {
       try {
         const top = await exec("git", ["rev-parse", "--show-toplevel"], { cwd, on });
         if (key() !== context) return;
-        if (top.code !== 0) { this.root = null; this.reset(); this.error = "No es un repositorio git"; return; }
+        if (top.code !== 0) { this.root = null; this.reset(); this.error = "Not a git repository"; return; }
         const root = top.stdout.trim(), git = (args) => exec("git", [...READ, ...args], { cwd: root, on });
         const refs = (await git(["for-each-ref", "--format=%(refname:short)", "refs/heads", "refs/remotes"])).stdout.split("\n").filter(Boolean);
         const originHead = (await git(["symbolic-ref", "--short", "refs/remotes/origin/HEAD"])).stdout.trim();
@@ -84,7 +84,7 @@ export default class Diff extends View {
           const all = parseStatus(status.stdout); limited = all.length > 1000;
           files = all.slice(0, 1000).map((f) => ({ ...f, add: 0, del: 0, ...stats[f.path] }));
         } else if (scope === "branch") {
-          if (!base) hint = "No encuentro la rama base (origin/main, main…)";
+          if (!base) hint = "Base branch not found (origin/main, main…)";
           else {
             const mb = (await git(["merge-base", base, "HEAD"])).stdout.trim() || base;
             files = await stat(git(["diff", mb, "--numstat", "-z", "--no-renames"]), git(["diff", mb, "--name-status", "-z", "--no-renames"]));
@@ -94,14 +94,14 @@ export default class Diff extends View {
         } else {
           const r = await git(["log", "--format=%H%x1f%h%x1f%s%x1f%ct", "-n", "60", ...(base ? [`${base}..HEAD`] : ["HEAD"])]);
           commits = r.code === 0 ? parseLog(r.stdout) : [];
-          if (!commits.length) hint = base ? `Sin commits nuevos sobre ${base}` : "Sin commits";
+          if (!commits.length) hint = base ? `No new commits over ${base}` : "No commits";
         }
         if (key() !== context || scope !== this.scope || commit !== this.commit) return;
         this.root = root; this.on = on; this.hasHead = head.code === 0; this.base = base; this.files = files; this.commits = commits; this.limited = limited; this.hint = hint; this.error = null;
         this.watch(root, cx);
         if (this.open && !files.some((f) => f.path === this.open)) { this.open = null; this.setLines([]); }
         if (!this.open && !this.closed && files.length) this.open = files[0].path; // the first file's diff shows until you pick another
-        if (this.open) { try { await this.load(this.open, context); } catch { if (key() === context) this.setLines(["No se puede mostrar este diff (muy grande o ilegible)"]); } }
+        if (this.open) { try { await this.load(this.open, context); } catch { if (key() === context) this.setLines(["Cannot show this diff (too large or unreadable)"]); } }
       } catch (e) { if (key() === context) this.error = String(e); }
       finally { this.loading = false; cx.notify(); }
     });
@@ -113,8 +113,8 @@ export default class Diff extends View {
     let lines;
     if (scope === "work" && (file.fresh || (!this.hasHead && file.status === "A"))) {
       const text = await readTextFile(`${root}/${path}`, { on }).catch(() => null);
-      if (text === null) lines = ["No se puede mostrar este archivo (binario, muy grande o ilegible)"];
-      else if (text.includes("\0")) lines = ["Archivo binario · sin diff de texto"];
+      if (text === null) lines = ["Cannot show this file (binary, too large or unreadable)"];
+      else if (text.includes("\0")) lines = ["Binary file · no text diff"];
       else {
         file.add = countLines(text);
         lines = [`@@ -0,0 +1,${file.add} @@`, ...text.slice(0, 400000).replace(/\n$/, "").split("\n").slice(0, MAX_LINES).map((l) => `+${l}`)];
@@ -126,9 +126,9 @@ export default class Diff extends View {
       const r = await exec("git", [...READ, ...args], { cwd: root, on });
       if (r.code !== 0) throw new Error(r.stderr);
       const all = r.stdout.replace(/\n$/, "").split("\n"), first = all.findIndex((l) => l.startsWith("@@"));
-      lines = first < 0 ? [file.binary ? "Archivo binario cambiado" : "Sin diff de texto"] : all.slice(first);
+      lines = first < 0 ? [file.binary ? "Binary file changed" : "No text diff"] : all.slice(first);
     }
-    if (key() === context && this.open === path) this.setLines(lines.slice(0, MAX_LINES).map((l) => (l.length > 4000 ? l.slice(0, 4000) + "… (línea cortada)" : l)));
+    if (key() === context && this.open === path) this.setLines(lines.slice(0, MAX_LINES).map((l) => (l.length > 4000 ? l.slice(0, 4000) + "… (line cut)" : l)));
   }
 
   setLines(lines) {
@@ -145,7 +145,7 @@ export default class Diff extends View {
     this.open = this.open === path ? null : path; this.setLines([]); this.note = null; this.closed = !this.open;
     const context = this.context;
     if (this.open) cx.spawn(async (cx) => {
-      try { await this.load(path, context); } catch (e) { if (key() === context && this.open === path) this.note = `No se puede mostrar este diff: ${e}`; }
+      try { await this.load(path, context); } catch (e) { if (key() === context && this.open === path) this.note = `Cannot show this diff: ${e}`; }
       cx.notify();
     });
     cx.notify();
@@ -164,7 +164,7 @@ export default class Diff extends View {
     cx.notify();
     cx.spawn(async () => {
       try { await writeTextFile(this.marksFile, JSON.stringify(this.marks), await readTextFile(this.marksFile)); }
-      catch { this.note = "No se pudo guardar la marca de visto"; }
+      catch { this.note = "Could not save the seen mark"; }
     });
   }
 
@@ -218,17 +218,17 @@ export default class Diff extends View {
     const head = v_flex().flex_none().border_b(1).border_color(t.border)
       .child(h_flex().h(42).px(14).gap(8).items_center()
         .child(div().font_semibold().child("jw:diff"))
-        .when(this.base && this.scope !== "work", (e) => e.child(div().px(5).py(1).rounded(4).border_1().border_color(t.border).text_size(10).text_color(t.muted).child(`contra ${this.base}`)))
+        .when(this.base && this.scope !== "work", (e) => e.child(div().px(5).py(1).rounded(4).border_1().border_color(t.border).text_size(10).text_color(t.muted).child(`against ${this.base}`)))
         .child(div().flex_1())
-        .when(!inCommitList && this.files.length > 0, (e) => e.child(div().text_size(11).text_color(t.dim).child(`${seenCount}/${this.files.length} vistos`)))
+        .when(!inCommitList && this.files.length > 0, (e) => e.child(div().text_size(11).text_color(t.dim).child(`${seenCount}/${this.files.length} seen`)))
         .child(div().text_size(11).text_color(t.ansi2).child(`+${add}`)).child(div().text_size(11).text_color(t.ansi1).child(`−${del}`))
         .when(!inCommitList, (e) => e.child(this.btn("layout", this.side() ? "▥" : "▤", false, (cx) => { setShared("jw.diff.side", !this.side()); cx.notify(); })))
         .child(this.btn("refresh", "↻", false, (cx) => { this.loading = false; this.refresh(cx); })))
       .child(h_flex().px(10).pb(8).gap(2).items_center().children(SCOPES.map(([k, l]) => this.btn(`scope-${k}`, l, this.scope === k, (cx) => this.go(k, null, cx))))
         .when(!inCommitList, (e) => e.child(div().flex_1())
-          .child(this.btn("mode-one", "Unificado", !this.split(), (cx) => { setShared("jw.diff.split", false); cx.notify(); }))
-          .child(this.btn("mode-split", "Lado a lado", this.split(), (cx) => { setShared("jw.diff.split", true); cx.notify(); }))));
-    const empty = this.error || this.hint || (this.loading ? "Leyendo cambios…" : this.root ? "Sin cambios" : "Sin carpeta");
+          .child(this.btn("mode-one", "Unified", !this.split(), (cx) => { setShared("jw.diff.split", false); cx.notify(); }))
+          .child(this.btn("mode-split", "Side by side", this.split(), (cx) => { setShared("jw.diff.split", true); cx.notify(); }))));
+    const empty = this.error || this.hint || (this.loading ? "Reading changes…" : this.root ? "No changes" : "No folder");
     const body = inCommitList
       ? v_flex().id("diff-commits").flex_1().min_h(0).overflow_y_scrollbar().p(6).children(this.commits.map((c) =>
           h_flex().id(`commit-${c.sha}`).h(30).flex_none().px(8).gap(10).items_center().rounded(7).cursor_pointer().hover((s) => s.bg(t.hover)).on_click((_e, cx) => this.go("commits", c, cx))
@@ -246,13 +246,13 @@ export default class Diff extends View {
         const list = v_flex().id("diff-files").overflow_y_scrollbar().p(6)
           .when(side, (e) => e.flex_1().min_h(0)).when(!side, (e) => e.flex_none().h(Math.min(200, Math.max(44, this.files.length * 28 + 12))).border_b(1).border_color(t.border))
           .children(this.files.map((f) => this.fileRow(f, t, side))).when(!this.files.length, (e) => e.child(div().p(8).text_color(t.dim).child(empty)));
-        const limited = this.limited ? div().px(12).py(4).text_size(11).text_color(t.dim).child("Mostrando los primeros 1.000 archivos") : null;
+        const limited = this.limited ? div().px(12).py(4).text_size(11).text_color(t.dim).child("Showing the first 1,000 files") : null;
         const diff = div().flex_1().min_h(0).min_w(0).h_full().relative().font_family(settings().font_family ?? "JetBrains Mono").text_size(metrics().size)
           .child(div().id("diff-x").size_full().overflow_x_scrollbar()
             .child(div().w_full().when(!this.split(), (e) => e.min_w(this.diffWidth)).h_full().child(v_virtual_list("diff-rows", this.split() ? this.pairs.length : this.rows.length, metrics().row, (i) => String(i),
               (range) => (this.split() ? this.pairs : this.rows).slice(range.start, range.end).map((row) => (this.split() ? this.pairRow(row, t) : this.diffRow(row, t)))).size_full())))
           .child(Scrollbar.vertical("diff-rows").viewport_from_layout().absolute().inset_0())
-          .when(!this.open && this.files.length > 0, (e) => e.child(div().absolute().top(6).px(12).text_color(t.dim).child("Elige un archivo para ver sus cambios")));
+          .when(!this.open && this.files.length > 0, (e) => e.child(div().absolute().top(6).px(12).text_color(t.dim).child("Pick a file to see its changes")));
         if (!side) return v_flex().flex_1().min_h(0).when(Boolean(commitHead), (e) => e.child(commitHead)).child(list).when(Boolean(limited), (e) => e.child(limited)).child(diff);
         return h_flex().flex_1().min_h(0)
           .child(v_flex().flex_none().w(Math.max(240, Math.round(metrics().size * 22))).h_full().min_h(0).border_r(1).border_color(t.border)

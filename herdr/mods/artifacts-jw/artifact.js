@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 // jw's `jw artifact` for Herdr, local: an agent publishes an HTML or Markdown file for the person to look at and decide on
-// (the panel, cmd-shift-a: Abrir, Aprobar, Pedir cambios); `wait` returns when they do. Exit: 0 approved, 4 changes (the note on
+// (the panel, cmd-shift-a: Open, Approve, Request changes); `wait` returns when they do. Exit: 0 approved, 4 changes (the note on
 // stdout), 3 timeout, 1 error.
 //   bun artifact.js publish <file> [--name N] [--title T] [--kind prototype|document|report|spec] [--wait [--timeout S]]
 //   bun artifact.js ls [--all] [--json]      bun artifact.js wait <id> [--timeout S]      bun artifact.js rm <id>
@@ -40,7 +40,7 @@ async function wait(dir, n, seconds) {
   for (;;) {
     const v = readJson(verdictFile(dir, n));
     if (v) { if (v.note) console.log(v.note); process.exit(v.verdict === "approved" ? 0 : 4); }
-    if (Date.now() >= end) die("se acabó el tiempo sin respuesta", 3);
+    if (Date.now() >= end) die("timed out without an answer", 3);
     await new Promise((r) => setTimeout(r, 1000));
   }
 }
@@ -51,7 +51,7 @@ export function opts(argv, flags, values) {
     const a = argv[i];
     if (flags.includes(a)) o[a.slice(2)] = true;
     else if (values.includes(a)) o[a.slice(2)] = argv[++i] ?? die(`${a} necesita un valor`);
-    else if (a.startsWith("--")) die(`opción desconocida: ${a}`);
+    else if (a.startsWith("--")) die(`unknown option: ${a}`);
     else o._.push(a);
   }
   return o;
@@ -89,11 +89,11 @@ async function main([cmd, ...rest]) {
   } else if (cmd === "wait") {
     const o = opts(rest, [], ["--timeout"]);
     if (o._.length !== 1) die("uso: wait <id> [--timeout S]");
-    const a = all(w.key).find((a) => a.meta.id === o._[0]) ?? die(`no hay un artifact «${o._[0]}» en este workspace`);
+    const a = all(w.key).find((a) => a.meta.id === o._[0]) ?? die(`no artifact "${o._[0]}" in this workspace`);
     await wait(a.dir, latest(a.meta).n, Number(o.timeout) || 0);
   } else if (cmd === "rm") {
     if (rest.length !== 1) die("uso: rm <id>");
-    const a = all(w.key).find((a) => a.meta.id === rest[0]) ?? die(`no hay un artifact «${rest[0]}» en este workspace`);
+    const a = all(w.key).find((a) => a.meta.id === rest[0]) ?? die(`no artifact "${rest[0]}" in this workspace`);
     rmSync(a.dir, { recursive: true });
   } else die("uso: publish <file> | ls [--all] [--json] | wait <id> [--timeout S] | rm <id>");
 }
