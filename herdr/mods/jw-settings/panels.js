@@ -1,19 +1,19 @@
-// Section "Paneles": the Files and Changes buttons of the tab bar (tabs-one). Off by default; the choice is the shared value "jw.panels".
+// Section "Paneles": the Diff, Files and Changes buttons of the tab bar (tabs-one). Diff is on by default; the choice is the shared value "jw.buttons".
 // Up/down + Enter or Space, or a click, turn one on or off.
 import { div } from "gpui-kit";
 import { v_flex, h_flex } from "gpui-base";
 import { theme, shared, setShared } from "herdr";
 
-const PANELS = [["files", "Files", "El explorador de archivos del space, a la derecha."], ["changes", "Changes", "Los cambios de git del space, a la derecha."]];
+const PANELS = [["diff", "Diff", "Los cambios del space: sin commit, contra la rama base y por commit, con marcas de visto."], ["files", "Files", "El explorador de archivos del space, a la derecha."], ["changes", "Changes", "Los cambios de git del space, a la derecha."]];
 
 export class PanelsSection {
   start() { this.at = 0; }
 
-  on() { return shared("jw.panels") ?? []; }
+  on() { return shared("jw.buttons") ?? ["diff"]; }
 
   toggle(id, cx) {
     const cur = this.on();
-    setShared("jw.panels", cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id]);
+    setShared("jw.buttons", cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id]);
     cx.notify();
   }
 
@@ -33,7 +33,7 @@ export class PanelsSection {
       .child(v_flex().flex_1().gap(1).child(div().text_color(t.foreground).child(label)).child(div().text_size(11).text_color(t.dim).child(about)));
     return v_flex().id("jw-panels").size_full().p(18).gap(8)
       .child(div().text_size(15).font_semibold().text_color(t.foreground).child("Paneles"))
-      .child(div().text_color(t.muted).child("Botones de la barra de arriba que abren un panel a la derecha. Apagados por defecto."))
+      .child(div().text_color(t.muted).child("Botones de la barra de arriba que abren un panel a la derecha. Diff viene encendido; Files y Changes, apagados."))
       .children(PANELS.map(row));
   }
 }

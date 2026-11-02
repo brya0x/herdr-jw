@@ -25,7 +25,7 @@ Ordenada por quién consume cada cosa:
 install.sh  sync.sh  README.md
 .claude-plugin/marketplace.json    marketplace del plugin (tiene que estar en la raíz)
 herdr/                             lo que carga Herdr
-├── mods/                          factory, factory-tasks, worktree-wt, tabs-one, picker-one, spaces-one, jw-settings, artifacts-jw
+├── mods/                          factory, factory-tasks, worktree-wt, tabs-one, picker-one, spaces-one, jw-settings, artifacts-jw, diff-jw
 ├── layouts/                       jw.json
 └── config/                        keys.json (atajos)
 claude/                            lo que carga Claude Code
@@ -133,10 +133,11 @@ Desde la terminal: `use.py mode light|dark|system`, `set <slug>` y `apply`.
 ### Navegación y layout
 
 - `herdr/layouts/jw.json`: clon de `main` sin la sección de agentes, con `tabs-one`.
-- `herdr/mods/tabs-one`: sin pestañas ni `+`, un solo tab por workspace; deja el nombre y los botones de ventana. Los botones Files y Changes vienen apagados; se encienden en `cmd-shift-,` > Paneles.
+- `herdr/mods/tabs-one`: sin pestañas ni `+`, un solo tab por workspace; deja el nombre y los botones de ventana. El botón Diff abre un panel a la derecha (se ensancha arrastrando el borde); Files y Changes vienen apagados y se encienden en `cmd-shift-,` > Paneles.
 - `herdr/mods/spaces-one`: los worktrees cuelgan de su repo (o del workspace que lista ese repo), y `cmd-]` / `cmd-[` recorren los spaces en el orden del sidebar.
+- `herdr/mods/diff-jw`: el panel **Diff** (botón de la barra de arriba), con las tres vistas del visor de jw: **Sin commit** (el árbol de trabajo contra `HEAD`), **Rama** (contra la rama base, `origin/main` o la que diga `origin/HEAD`) y **Commits** (se elige uno y salen sus archivos). Cada archivo tiene su casilla de «visto», que se guarda en `data/diff-seen.json` y se apaga si el cambio del archivo cambia. Solo lee: no escribe nada en `.git`. Sin portar de jw todavía: cambios por palabra, ajuste de líneas largas, selección de líneas y abrir un archivo en un visor.
 - `herdr/mods/picker-one`: selector de tabs y spaces (`cmd-p`).
-- `herdr/mods/jw-settings` (`cmd-shift-,`): una sola pantalla con lista a la izquierda, como los Settings de Herdr. **Tema** (claro, oscuro o sistema, y qué tema), **Costos** (costo y tokens por proyecto y por semana, de `~/.claude/projects`, mismas reglas de conteo que `usage.rs` de jw) y **Paneles** (los botones Files y Changes de la barra de arriba, apagados por defecto) y **Actualizar** (corre el `install.sh` publicado, sin tocar `keys.json`).
+- `herdr/mods/jw-settings` (`cmd-shift-,`): una sola pantalla con lista a la izquierda, como los Settings de Herdr. **Tema** (claro, oscuro o sistema, y qué tema), **Costos** (costo y tokens por proyecto y por semana, de `~/.claude/projects`, mismas reglas de conteo que `usage.rs` de jw) y **Paneles** (qué botones salen en la barra de arriba: Diff encendido, Files y Changes apagados) y **Actualizar** (corre el `install.sh` publicado, sin tocar `keys.json`).
 
 ## Atajos
 
@@ -172,6 +173,7 @@ El costo muestra «sin tarifa» hasta que escribas `~/.config/herdr-app/data/fac
 bun herdr/mods/worktree-wt/jwtoml.test.js     # lee .jw.toml reales de un repo tuyo: la ruta está al inicio del test
 bun herdr/mods/artifacts-jw/artifact.test.js
 bun herdr/mods/factory-tasks/lib.test.js
+bun herdr/mods/diff-jw/lib.test.js
 node herdr/mods/factory/test_stats.mjs
 python3 herdr/mods/factory/test_fails.py
 python3 herdr/mods/factory/test_flow.py

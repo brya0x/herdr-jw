@@ -122,6 +122,14 @@
                   "type": "stack",
                   "children": [
                     {
+                      "id": "diff",
+                      "type": "block",
+                      "content": {
+                        "mod": "diff-jw"
+                      },
+                      "children": []
+                    },
+                    {
                       "id": "files",
                       "type": "block",
                       "content": {
@@ -138,14 +146,14 @@
                       "children": []
                     }
                   ],
-                  "active": "files"
+                  "active": "diff"
                 }
               ],
               "size": {
-                "px": 368
+                "px": 560
               },
               "min": 280,
-              "max": 900,
+              "max": 1100,
               "hidden": true
             }
           ],

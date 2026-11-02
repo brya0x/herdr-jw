@@ -133,7 +133,7 @@ export default class Tabs extends View {
     setAgentOrder(spaces().flatMap((sp) => agents().filter((a) => a.space === sp.id).map((a) => a.address)));
     const loop = (shared("factory.tasks") ?? {})[space?.folder];
     const panel = find(root, "panel"), body = find(root, "panel-body");
-    const enabled = shared("jw.panels") ?? []; // the Files / Changes buttons: off unless cmd-shift-, > Paneles turns them on
+    const enabled = shared("jw.buttons") ?? ["diff"]; // the Diff button is on; Files and Changes are off unless cmd-shift-, > Paneles turns them on
     this.syncPanel(space, panel, body, enabled);
     const panelButton = (id, label, icon) => {
       const on = panel && !panel.hidden && body?.active === id;
@@ -151,6 +151,7 @@ export default class Tabs extends View {
         .hover(s => s.bg(t.hover)).on_mouse_down("left", stop)
         .on_click(() => openOverlay({ mod: "factory-tasks", kind: "dialog", width: 640, height: 520 }))
         .child(`${loop?.on ? "⟳ " : ""}${this.counts[space?.folder]?.done ?? 0}/${this.counts[space?.folder]?.total ?? 0}`)))
+      .when(enabled.includes("diff"), el => el.child(panelButton("diff", "Diff", "mods/diff-jw/diff.svg")))
       .when(enabled.includes("files"), el => el.child(panelButton("files", "Files", "mods/files/file.svg")))
       .when(enabled.includes("changes"), el => el.child(panelButton("changes", "Changes", "mods/changes/changes.svg")))
       .when(w?.buttons, el => el.child(button("minimize", w.platform === "windows" ? svg("mods/tabs-one/win-min.svg").size(16) : "−", () => run("window.minimize")))

@@ -5,7 +5,7 @@
 set -eu
 H=${HERDR_APP_HOME:-$HOME/.config/herdr-app}
 R=$(cd "$(dirname "$0")" && pwd)
-MODS="factory worktree-wt tabs-one picker-one factory-tasks spaces-one jw-settings artifacts-jw"
+MODS="factory worktree-wt tabs-one picker-one factory-tasks spaces-one jw-settings artifacts-jw diff-jw"
 OLD_MODS="themes-jw factory-usage update-jw"  # replaced by jw-settings: removed from the live config on push
 # gpui-kit.d.ts and jsconfig.json are written by Herdr on every start
 rs() { rsync -a "$@" --exclude=gpui-kit.d.ts --exclude=jsconfig.json --exclude='*.error' --exclude=.DS_Store; }
