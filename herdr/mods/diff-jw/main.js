@@ -22,6 +22,9 @@ const key = () => JSON.stringify(location());
 // Reads write nothing under .git (no index refresh or lock, no fsmonitor cookie): the folder watch would see it, and every refresh would start the next one.
 const READ = ["--no-optional-locks", "-c", "core.fsmonitor=false", "-c", "diff.autoRefreshIndex=false"];
 const SHOW = ["--no-ext-diff", "--no-textconv", "--no-color"];
+// The diff is drawn at the size of Herdr's terminals (settings().font_size, in px like a terminal's), so its text matches the panes beside it.
+// JetBrains Mono (and most terminal fonts) advance 0.6 em; the row is 1.4 em tall.
+const metrics = () => { const size = Number(settings().font_size) || 15; return { size, row: Math.ceil(size * 1.4), cw: size * 0.6, gutter: Math.ceil(size * 0.6 * 4) + 8 }; };
 const countLines = (text) => text ? text.split("\n").length - Number(text.endsWith("\n")) : 0;
 
 export default class Diff extends View {
@@ -130,7 +133,8 @@ export default class Diff extends View {
 
   setLines(lines) {
     this.rows = diffRows(lines);
-    this.diffWidth = Math.max(300, ...lines.map((l) => l.length * 7 + 50));
+    const { cw, gutter } = metrics();
+    this.diffWidth = Math.max(300, ...lines.map((l) => l.length * cw + gutter + 40));
   }
 
   pick(path, cx) {
@@ -161,9 +165,10 @@ export default class Diff extends View {
   }
 
   diffRow({ kind, number, text }, t) {
-    if (kind === "@") return div().w_full().px(12).h(20).flex_none().truncate().bg(t.raised).text_color(t.dim).child(text);
-    return h_flex().w_full().h(20).flex_none().gap(10).when(kind === "+", (e) => e.bg(t.ansi2 + "18")).when(kind === "-", (e) => e.bg(t.ansi1 + "18"))
-      .child(div().w(30).flex_none().text_right().text_color(t.dim).child(number === undefined ? "" : String(number)))
+    const { row, gutter } = metrics();
+    if (kind === "@") return div().w_full().px(12).h(row).flex_none().truncate().bg(t.raised).text_color(t.dim).child(text);
+    return h_flex().w_full().h(row).flex_none().gap(10).when(kind === "+", (e) => e.bg(t.ansi2 + "18")).when(kind === "-", (e) => e.bg(t.ansi1 + "18"))
+      .child(div().w(gutter).flex_none().text_right().text_color(t.dim).child(number === undefined ? "" : String(number)))
       .child(div().flex_1().min_w(0).truncate().child(text));
   }
 
@@ -215,9 +220,9 @@ export default class Diff extends View {
         .child(v_flex().id("diff-files").flex_none().h(Math.min(200, Math.max(44, this.files.length * 28 + 12))).overflow_y_scrollbar().p(6).border_b(1).border_color(t.border)
           .children(this.files.map((f) => this.fileRow(f, t))).when(!this.files.length, (e) => e.child(div().p(8).text_color(t.dim).child(empty))))
         .when(this.limited, (e) => e.child(div().px(12).py(4).text_size(11).text_color(t.dim).child("Mostrando los primeros 1.000 archivos")))
-        .child(div().flex_1().min_h(0).relative().font_family(settings().font_family ?? "JetBrains Mono").text_size(11)
+        .child(div().flex_1().min_h(0).relative().font_family(settings().font_family ?? "JetBrains Mono").text_size(metrics().size)
           .child(div().id("diff-x").size_full().overflow_x_scrollbar()
-            .child(div().w_full().min_w(this.diffWidth).h_full().child(v_virtual_list("diff-rows", this.rows.length, 20, (i) => String(i),
+            .child(div().w_full().min_w(this.diffWidth).h_full().child(v_virtual_list("diff-rows", this.rows.length, metrics().row, (i) => String(i),
               (range) => this.rows.slice(range.start, range.end).map((row) => this.diffRow(row, t))).size_full())))
           .child(Scrollbar.vertical("diff-rows").viewport_from_layout().absolute().inset_0())
           .when(!this.open && this.files.length > 0, (e) => e.child(div().absolute().top(6).px(12).text_color(t.dim).child("Elige un archivo para ver sus cambios"))));
