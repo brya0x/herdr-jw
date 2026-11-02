@@ -45,7 +45,7 @@
     "ctrl-7": "space.select:7",
     "ctrl-8": "space.select:8",
     "ctrl-9": "space.select:9",
-    "cmd-shift-j": "mod.open:jw-settings"
+    "cmd-shift-,": "mod.open:jw-settings"
   },
   "terminal": {
     "cmd-c": "terminal.copy",

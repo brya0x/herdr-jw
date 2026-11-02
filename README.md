@@ -50,7 +50,7 @@ atajos de abajo y quita los `tab.*`; si cambia algo deja una copia `keys.json.ba
 - `| sh -s -- --no-keys` no toca `keys.json`.
 - `| sh -s -- --no-plugin` no instala el plugin `jw` de Claude Code (si hay `claude`, lo añade desde el marketplace de este repo; volver a correrlo lo actualiza).
 - `HERDR_JW_REF=<rama|tag>` elige la versión. Volver a correrlo actualiza.
-- Para actualizar sin salir de Herdr: `cmd-shift-j` y la sección **Actualizar** corre esto mismo y muestra lo que imprime. Reinicia Herdr después para cargar los mods nuevos.
+- Para actualizar sin salir de Herdr: `cmd-shift-,` y la sección **Actualizar** corre esto mismo y muestra lo que imprime. Reinicia Herdr después para cargar los mods nuevos.
 - Reinicia Herdr y activa el layout: `herdr-app do layout.switch '{"name":"jw"}'` (el script no lo cambia solo).
 
 Desde un clon: `./sync.sh push` copia lo mismo sin tocar `keys.json`. Para guardar en el repo lo que cambiaste
@@ -125,7 +125,7 @@ claude plugin install jw@herdr-jw
 ### Temas para Herdr y Claude Code (`internals/themes/` + `herdr/mods/jw-settings`)
 
 Diez temas (One, Catppuccin, Tokyo Night, Gruvbox y Solarized, cada uno oscuro y claro) con una sola paleta por
-tema, de la que `build.py` saca el tema de Herdr y el de Claude Code (`~/.claude/themes/`). `cmd-shift-j` abre
+tema, de la que `build.py` saca el tema de Herdr y el de Claude Code (`~/.claude/themes/`). `cmd-shift-,` abre
 la pantalla de jw, sección **Tema**: **Claro**, **Oscuro** o **Sistema**, y qué tema oscuro y claro usar. En Sistema, Herdr sigue al
 sistema y el tema de Claude cambia con él. Claude usa siempre un solo tema, `JW` (`~/.claude/themes/jw.json`), que se reescribe con la paleta elegida; Claude Code repinta solo las sesiones abiertas cuando ese archivo cambia, trabajen o no. Una sesión que aún no usa `JW` se pasa a él una vez con `/theme` (teclas por `hc`, también si está trabajando) Se dejan quietas las que tienen texto escrito. Una sesión que se abrió antes de que existiera `~/.claude/themes/` no lista `JW` en su `/theme`: no se puede mover sola, y hay que reiniciarla a mano con `claude --resume`.
 Desde la terminal: `use.py mode light|dark|system`, `set <slug>` y `apply`.
@@ -133,10 +133,10 @@ Desde la terminal: `use.py mode light|dark|system`, `set <slug>` y `apply`.
 ### Navegación y layout
 
 - `herdr/layouts/jw.json`: clon de `main` sin la sección de agentes, con `tabs-one`.
-- `herdr/mods/tabs-one`: sin pestañas ni `+`, un solo tab por workspace; deja el nombre y los botones de ventana. Los botones Files y Changes vienen apagados; se encienden en `cmd-shift-j` > Paneles.
+- `herdr/mods/tabs-one`: sin pestañas ni `+`, un solo tab por workspace; deja el nombre y los botones de ventana. Los botones Files y Changes vienen apagados; se encienden en `cmd-shift-,` > Paneles.
 - `herdr/mods/spaces-one`: los worktrees cuelgan de su repo (o del workspace que lista ese repo), y `cmd-]` / `cmd-[` recorren los spaces en el orden del sidebar.
 - `herdr/mods/picker-one`: selector de tabs y spaces (`cmd-p`).
-- `herdr/mods/jw-settings` (`cmd-shift-j`): una sola pantalla con lista a la izquierda, como los Settings de Herdr. **Tema** (claro, oscuro o sistema, y qué tema), **Costos** (costo y tokens por proyecto y por semana, de `~/.claude/projects`, mismas reglas de conteo que `usage.rs` de jw) y **Paneles** (los botones Files y Changes de la barra de arriba, apagados por defecto) y **Actualizar** (corre el `install.sh` publicado, sin tocar `keys.json`).
+- `herdr/mods/jw-settings` (`cmd-shift-,`): una sola pantalla con lista a la izquierda, como los Settings de Herdr. **Tema** (claro, oscuro o sistema, y qué tema), **Costos** (costo y tokens por proyecto y por semana, de `~/.claude/projects`, mismas reglas de conteo que `usage.rs` de jw) y **Paneles** (los botones Files y Changes de la barra de arriba, apagados por defecto) y **Actualizar** (corre el `install.sh` publicado, sin tocar `keys.json`).
 
 ## Atajos
 
@@ -148,7 +148,7 @@ Desde la terminal: `use.py mode light|dark|system`, `set <slug>` y `apply`.
 | `cmd-shift-v` | Panel de repos, productividad, gasto y detecciones |
 | `cmd-shift-t` | Tareas del workspace |
 | `cmd-shift-a` | Artifacts por aprobar |
-| `cmd-shift-j` | Pantalla de jw: Tema, Costos, Paneles y Actualizar (`Tab` o `1`-`4` cambian de sección) |
+| `cmd-shift-,` | Pantalla de jw: Tema, Costos, Paneles y Actualizar (`Tab` o `1`-`4` cambian de sección) |
 | `cmd-p` | Selector de tabs y spaces |
 
 Todos salen de `herdr/config/keys.json`.

@@ -133,7 +133,7 @@ export default class Tabs extends View {
     setAgentOrder(spaces().flatMap((sp) => agents().filter((a) => a.space === sp.id).map((a) => a.address)));
     const loop = (shared("factory.tasks") ?? {})[space?.folder];
     const panel = find(root, "panel"), body = find(root, "panel-body");
-    const enabled = shared("jw.panels") ?? []; // the Files / Changes buttons: off unless cmd-shift-j > Paneles turns them on
+    const enabled = shared("jw.panels") ?? []; // the Files / Changes buttons: off unless cmd-shift-, > Paneles turns them on
     this.syncPanel(space, panel, body, enabled);
     const panelButton = (id, label, icon) => {
       const on = panel && !panel.hidden && body?.active === id;

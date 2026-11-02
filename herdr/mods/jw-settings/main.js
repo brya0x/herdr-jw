@@ -1,4 +1,4 @@
-// cmd-shift-j: one screen for jw, like Herdr's Settings: a list on the left and the section on the right.
+// cmd-shift-,: one screen for jw, like Herdr's Settings: a list on the left and the section on the right.
 // Tema (light/dark/system and which theme), Costos (what claude has cost), Paneles (the Files and Changes buttons), Actualizar (herdr-jw itself).
 // Tab / shift+tab or 1-4 move between sections; each section takes the other keys; Esc leaves.
 import { View, div } from "gpui-kit";

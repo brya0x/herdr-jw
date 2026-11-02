@@ -33,6 +33,8 @@ out = json.loads(json.dumps(cur))
 for sec, binds in new.items():
     out.setdefault(sec, {}).update(binds)
 GONE = ("mod.open:themes-jw", "mod.open:factory-usage", "mod.open:update-jw")  # mods that jw-settings replaced
+for k in [k for k, v in out.get("global", {}).items() if v == "mod.open:jw-settings" and k not in new.get("global", {})]:
+    del out["global"][k]  # an older shortcut of the same screen (it was cmd-shift-j)
 for k in [k for k, v in out.get("global", {}).items() if str(v).startswith("tab.") or v in GONE]:
     del out["global"][k]
 if out == cur:
