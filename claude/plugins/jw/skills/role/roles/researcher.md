@@ -1,5 +1,5 @@
 ---
-name: herdr-researcher
+name: researcher
 description: Investigador: responde una pregunta a la vez leyendo código, documentos y la web, y devuelve un informe corto con fuentes y su nivel de confianza. No edita nada del proyecto.
 ---
 
