@@ -25,7 +25,7 @@ Ordenada por quién consume cada cosa:
 install.sh  sync.sh  README.md
 .claude-plugin/marketplace.json    marketplace del plugin (tiene que estar en la raíz)
 herdr/                             lo que carga Herdr
-├── mods/                          factory, factory-tasks, worktree-wt, tabs-one, picker-one, spaces-one, jw-settings, artifacts-jw, diff-jw
+├── mods/                          factory, factory-tasks, worktree-wt, tabs-one, picker-one, spaces-one, jw-settings, artifacts-jw, jw-diff
 ├── layouts/                       jw.json
 └── config/                        keys.json (atajos)
 claude/                            lo que carga Claude Code
@@ -133,11 +133,11 @@ Desde la terminal: `use.py mode light|dark|system`, `set <slug>` y `apply`.
 ### Navegación y layout
 
 - `herdr/layouts/jw.json`: clon de `main` sin la sección de agentes, con `tabs-one`.
-- `herdr/mods/tabs-one`: sin pestañas ni `+`, un solo tab por workspace; deja el nombre y los botones de ventana. El botón `jw:diff` abre el visor de diff en un pane a la derecha del agente; Files y Changes vienen apagados y se encienden en `cmd-shift-,` > Paneles.
+- `herdr/mods/tabs-one`: sin pestañas ni `+`, un solo tab por workspace; deja el nombre y los botones de ventana. El botón Diff abre el visor de diff en un pane a la derecha del agente; Files y Changes vienen apagados y se encienden en `cmd-shift-,` > Paneles.
 - `herdr/mods/spaces-one`: los worktrees cuelgan de su repo (o del workspace que lista ese repo), y `cmd-]` / `cmd-[` recorren los spaces en el orden del sidebar.
-- `herdr/mods/diff-jw` (botón **`jw:diff`** de la barra de arriba): el visor de diff de jw como un **pane** del layout. El botón divide el pane enfocado y abre este mod a su derecha (con el borde, el foco, el zoom y el swap de cualquier pane, la apariencia de Herdr y el font del terminal en el diff); pulsarlo otra vez lo cierra. El pane muestra la carpeta desde la que se abrió. Tres vistas: **Sin commit** (el árbol de trabajo contra `HEAD`), **Rama** (contra la rama base, `origin/main` o la que diga `origin/HEAD`) y **Commits** (se elige uno y salen sus archivos, con «‹ commits» para volver). El diff se ve **unificado** (una columna) o **lado a lado** como GitHub (lo viejo a la izquierda y lo nuevo a la derecha, con las líneas largas cortadas); el selector de la cabecera se acuerda de la elección. La lista de archivos va a la izquierda del diff (el botón ▥/▤ de la cabecera la pasa arriba y se acuerda de la elección). Cada archivo tiene su casilla de «visto», que se guarda en `data/diff-seen.json` y se apaga si el cambio del archivo cambia. Se refresca solo cuando cambia la carpeta. Solo lee: no escribe nada en `.git`. Sin portar de jw todavía: cambios por palabra, ajuste de líneas largas (en el modo unificado se hace scroll horizontal), selección de líneas con `V` y abrir un archivo en un visor.
+- `herdr/mods/jw-diff` (botón **Diff** de la barra de arriba; el panel se titula `jw:diff`): el visor de diff de jw como un **pane** del layout. El botón divide el pane enfocado y abre este mod a su derecha (con el borde, el foco, el zoom y el swap de cualquier pane, la apariencia de Herdr y el font del terminal en el diff); pulsarlo otra vez lo cierra. El pane muestra la carpeta desde la que se abrió. Tres vistas: **Sin commit** (el árbol de trabajo contra `HEAD`), **Rama** (contra la rama base, `origin/main` o la que diga `origin/HEAD`) y **Commits** (se elige uno y salen sus archivos, con «‹ commits» para volver). El diff se ve **unificado** (una columna) o **lado a lado** como GitHub (lo viejo a la izquierda y lo nuevo a la derecha, con las líneas largas cortadas); el selector de la cabecera se acuerda de la elección. La lista de archivos va a la izquierda del diff (el botón ▥/▤ de la cabecera la pasa arriba y se acuerda de la elección). Cada archivo tiene su casilla de «visto», que se guarda en `data/diff-seen.json` y se apaga si el cambio del archivo cambia. Se refresca solo cuando cambia la carpeta. Solo lee: no escribe nada en `.git`. Sin portar de jw todavía: cambios por palabra, ajuste de líneas largas (en el modo unificado se hace scroll horizontal), selección de líneas con `V` y abrir un archivo en un visor.
 - `herdr/mods/picker-one`: selector de tabs y spaces (`cmd-p`).
-- `herdr/mods/jw-settings` (`cmd-shift-,`): una sola pantalla con lista a la izquierda, como los Settings de Herdr. **Tema** (claro, oscuro o sistema, y qué tema), **Costos** (costo y tokens por proyecto y por semana, de `~/.claude/projects`, mismas reglas de conteo que `usage.rs` de jw) y **Paneles** (qué botones salen en la barra de arriba: `jw:diff` encendido, Files y Changes apagados) y **Actualizar** (corre el `install.sh` publicado, sin tocar `keys.json`).
+- `herdr/mods/jw-settings` (`cmd-shift-,`): una sola pantalla con lista a la izquierda, como los Settings de Herdr. **Tema** (claro, oscuro o sistema, y qué tema), **Costos** (costo y tokens por proyecto y por semana, de `~/.claude/projects`, mismas reglas de conteo que `usage.rs` de jw) y **Paneles** (qué botones salen en la barra de arriba: Diff encendido, Files y Changes apagados) y **Actualizar** (corre el `install.sh` publicado, sin tocar `keys.json`).
 
 ## Atajos
 
@@ -173,7 +173,7 @@ El costo muestra «sin tarifa» hasta que escribas `~/.config/herdr-app/data/fac
 bun herdr/mods/worktree-wt/jwtoml.test.js     # lee .jw.toml reales de un repo tuyo: la ruta está al inicio del test
 bun herdr/mods/artifacts-jw/artifact.test.js
 bun herdr/mods/factory-tasks/lib.test.js
-bun herdr/mods/diff-jw/lib.test.js
+bun herdr/mods/jw-diff/lib.test.js
 node herdr/mods/factory/test_stats.mjs
 python3 herdr/mods/factory/test_fails.py
 python3 herdr/mods/factory/test_flow.py

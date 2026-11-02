@@ -5,8 +5,8 @@
 set -eu
 H=${HERDR_APP_HOME:-$HOME/.config/herdr-app}
 R=$(cd "$(dirname "$0")" && pwd)
-MODS="factory worktree-wt tabs-one picker-one factory-tasks spaces-one jw-settings artifacts-jw diff-jw"
-OLD_MODS="themes-jw factory-usage update-jw"  # replaced by jw-settings: removed from the live config on push
+MODS="factory worktree-wt tabs-one picker-one factory-tasks spaces-one jw-settings artifacts-jw jw-diff"
+OLD_MODS="themes-jw factory-usage update-jw diff-jw"  # replaced by jw-settings: removed from the live config on push
 # gpui-kit.d.ts and jsconfig.json are written by Herdr on every start
 rs() { rsync -a "$@" --exclude=gpui-kit.d.ts --exclude=jsconfig.json --exclude='*.error' --exclude=.DS_Store; }
 case ${1:-} in
@@ -15,7 +15,7 @@ case ${1:-} in
     cp "$R/herdr/mods/factory-tasks/lib.js" "$R/herdr/mods/tabs-one/tasks-lib.js"
     for m in $MODS; do mkdir -p "$H/mods/$m"; rs "$R/herdr/mods/$m/" "$H/mods/$m/"; done
     for m in $OLD_MODS; do rm -rf "$H/mods/$m"; done
-    rm -rf "$H/data/jw-diff"  # the diff viewer was a terminal program for a day; it is the diff-jw mod now
+    rm -rf "$H/data/jw-diff"  # the diff viewer was a terminal program for a day; it is the jw-diff mod now
     mkdir -p "$H/layouts"; cp "$R/herdr/layouts/jw.json" "$H/layouts/jw.json"
     mkdir -p "$H/data/jw-themes"; cp "$R"/internals/themes/*.json "$R/internals/themes/build.py" "$R/internals/themes/use.py" "$H/data/jw-themes/"
     python3 "$R/internals/themes/build.py" >/dev/null

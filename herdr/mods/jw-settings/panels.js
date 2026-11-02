@@ -4,7 +4,7 @@ import { div } from "gpui-kit";
 import { v_flex, h_flex } from "gpui-base";
 import { theme, shared, setShared } from "herdr";
 
-const PANELS = [["diff", "jw:diff", "Los cambios del space: sin commit, contra la rama base y por commit, con marcas de visto."], ["files", "Files", "El explorador de archivos del space, a la derecha."], ["changes", "Changes", "Los cambios de git del space, a la derecha."]];
+const PANELS = [["diff", "Diff", "Los cambios del space: sin commit, contra la rama base y por commit, con marcas de visto."], ["files", "Files", "El explorador de archivos del space, a la derecha."], ["changes", "Changes", "Los cambios de git del space, a la derecha."]];
 
 export class PanelsSection {
   start() { this.at = 0; }

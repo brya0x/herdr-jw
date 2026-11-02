@@ -217,7 +217,7 @@ export default class Diff extends View {
     const inCommitList = this.scope === "commits" && !this.commit;
     const head = v_flex().flex_none().border_b(1).border_color(t.border)
       .child(h_flex().h(42).px(14).gap(8).items_center()
-        .child(div().font_semibold().child("Diff"))
+        .child(div().font_semibold().child("jw:diff"))
         .when(this.base && this.scope !== "work", (e) => e.child(div().px(5).py(1).rounded(4).border_1().border_color(t.border).text_size(10).text_color(t.muted).child(`contra ${this.base}`)))
         .child(div().flex_1())
         .when(!inCommitList && this.files.length > 0, (e) => e.child(div().text_size(11).text_color(t.dim).child(`${seenCount}/${this.files.length} vistos`)))
@@ -259,7 +259,7 @@ export default class Diff extends View {
             .when(Boolean(commitHead), (e) => e.child(commitHead)).child(list).when(Boolean(limited), (e) => e.child(limited)))
           .child(diff);
       })();
-    return v_flex().id("diff-jw").size_full().min_h(0).overflow_hidden().bg(t.background).text_color(t.foreground).text_size(13).track_focus(this.handle)
+    return v_flex().id("jw-diff").size_full().min_h(0).overflow_hidden().bg(t.background).text_color(t.foreground).text_size(13).track_focus(this.handle)
       .child(head).child(body)
       .when(Boolean(this.note), (e) => e.child(div().px(10).pb(8).text_size(11).text_color(t.ansi1).child(this.note)));
   }

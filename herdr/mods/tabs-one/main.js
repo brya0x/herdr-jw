@@ -145,13 +145,13 @@ export default class Tabs extends View {
         else { run("layout.select", { stack: "panel-body", child: id }); run("layout.show", { id: "panel" }); }
       });
     };
-    // Diff: a pane beside the focused one that runs the diff-jw mod (a pane has its border, focus, zoom and swap); again closes it.
-    const diffPane = () => panes().find((p) => p.tab === focused()?.tab && p.mod === "diff-jw");
-    const diffButton = () => barButton("diff", "jw:diff", "mods/tabs-one/diff.svg", Boolean(diffPane()), () => {
+    // Diff: a pane beside the focused one that runs the jw-diff mod (a pane has its border, focus, zoom and swap); again closes it.
+    const diffPane = () => panes().find((p) => p.tab === focused()?.tab && p.mod === "jw-diff");
+    const diffButton = () => barButton("diff", "Diff", "mods/tabs-one/diff.svg", Boolean(diffPane()), () => {
       const open = diffPane();
       if (open) return run("pane.close", { pane: open.pane });
       const f = focused();
-      run("pane.split", { direction: "right", ...(f?.pane ? { pane: f.pane } : {}), mod: "diff-jw", props: { cwd: f?.cwd || space?.folder || null, on: space?.machine ?? null } });
+      run("pane.split", { direction: "right", ...(f?.pane ? { pane: f.pane } : {}), mod: "jw-diff", props: { cwd: f?.cwd || space?.folder || null, on: space?.machine ?? null } });
     });
     return h_flex().size_full().min_w(0).px(10).pl(lightsPadding).gap(3).items_center().bg(t.chrome).border_b(1).border_color(t.border)
       .child(div().id("space-name").flex_1().min_w(0).truncate().text_size(12.8).text_color(t.muted).child(space?.name ?? ""))
