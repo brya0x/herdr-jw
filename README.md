@@ -133,10 +133,10 @@ Desde la terminal: `use.py mode light|dark|system`, `set <slug>` y `apply`.
 ### Navegación y layout
 
 - `herdr/layouts/jw.json`: clon de `main` sin la sección de agentes, con `tabs-one`.
-- `herdr/mods/tabs-one`: sin pestañas ni `+`, un solo tab por workspace; deja el nombre, Files, Changes y los botones de ventana.
+- `herdr/mods/tabs-one`: sin pestañas ni `+`, un solo tab por workspace; deja el nombre y los botones de ventana. Los botones Files y Changes vienen apagados; se encienden en `cmd-shift-j` > Paneles.
 - `herdr/mods/spaces-one`: los worktrees cuelgan de su repo (o del workspace que lista ese repo), y `cmd-]` / `cmd-[` recorren los spaces en el orden del sidebar.
 - `herdr/mods/picker-one`: selector de tabs y spaces (`cmd-p`).
-- `herdr/mods/jw-settings` (`cmd-shift-j`): una sola pantalla con lista a la izquierda, como los Settings de Herdr. **Tema** (claro, oscuro o sistema, y qué tema), **Costos** (costo y tokens por proyecto y por semana, de `~/.claude/projects`, mismas reglas de conteo que `usage.rs` de jw) y **Actualizar** (corre el `install.sh` publicado, sin tocar `keys.json`).
+- `herdr/mods/jw-settings` (`cmd-shift-j`): una sola pantalla con lista a la izquierda, como los Settings de Herdr. **Tema** (claro, oscuro o sistema, y qué tema), **Costos** (costo y tokens por proyecto y por semana, de `~/.claude/projects`, mismas reglas de conteo que `usage.rs` de jw) y **Paneles** (los botones Files y Changes de la barra de arriba, apagados por defecto) y **Actualizar** (corre el `install.sh` publicado, sin tocar `keys.json`).
 
 ## Atajos
 
@@ -148,7 +148,7 @@ Desde la terminal: `use.py mode light|dark|system`, `set <slug>` y `apply`.
 | `cmd-shift-v` | Panel de repos, productividad, gasto y detecciones |
 | `cmd-shift-t` | Tareas del workspace |
 | `cmd-shift-a` | Artifacts por aprobar |
-| `cmd-shift-j` | Pantalla de jw: Tema, Costos y Actualizar (`Tab` o `1`-`3` cambian de sección) |
+| `cmd-shift-j` | Pantalla de jw: Tema, Costos, Paneles y Actualizar (`Tab` o `1`-`4` cambian de sección) |
 | `cmd-p` | Selector de tabs y spaces |
 
 Todos salen de `herdr/config/keys.json`.

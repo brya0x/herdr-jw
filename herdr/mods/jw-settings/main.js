@@ -1,14 +1,15 @@
 // cmd-shift-j: one screen for jw, like Herdr's Settings: a list on the left and the section on the right.
-// Tema (light/dark/system and which theme), Costos (what claude has cost), Actualizar (herdr-jw itself).
-// Tab / shift+tab or 1-3 move between sections; each section takes the other keys; Esc leaves.
+// Tema (light/dark/system and which theme), Costos (what claude has cost), Paneles (the Files and Changes buttons), Actualizar (herdr-jw itself).
+// Tab / shift+tab or 1-4 move between sections; each section takes the other keys; Esc leaves.
 import { View, div } from "gpui-kit";
 import { v_flex, h_flex } from "gpui-base";
 import { theme, props, closeOverlay } from "herdr";
 import { ThemeSection } from "./theme.js";
 import { UsageSection } from "./usage-view.js";
 import { UpdateSection } from "./update.js";
+import { PanelsSection } from "./panels.js";
 
-const SECTIONS = [["theme", "Tema", ThemeSection], ["usage", "Costos", UsageSection], ["update", "Actualizar", UpdateSection]];
+const SECTIONS = [["theme", "Tema", ThemeSection], ["usage", "Costos", UsageSection], ["panels", "Paneles", PanelsSection], ["update", "Actualizar", UpdateSection]];
 
 export default class JwSettings extends View {
   init(_props, cx) {
