@@ -25,7 +25,7 @@ export default class Tasks extends View {
 
   start(cx) {
     const s = this.space(), p = this.path();
-    if (parse(this.md).filter((t) => t.id !== "fin").length === 0) { this.msg = "No list: ask the agent to write it (herdr-tasks skill)."; return cx.notify(); }
+    if (parse(this.md).filter((t) => t.id !== "fin").length === 0) { this.msg = "No list: ask the agent to write it (jw:tasks skill)."; return cx.notify(); }
     cx.spawn(async (cx) => {
       await exec("mkdir", ["-p", p.slice(0, p.lastIndexOf("/"))]);
       const now = await readTextFile(p), next = withFinal(now);

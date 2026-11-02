@@ -59,7 +59,7 @@ export class UpdateSection {
       .child(this.phase === "idle" ? "Update now" : this.phase === "run" ? "Updating…" : "Update again");
     return v_flex().id("jw-update").size_full().p(18).gap(10)
       .child(div().text_size(15).font_semibold().text_color(color).child(head))
-      .child(div().text_color(t.muted).child("Runs the published install.sh (mods, layout, themes, the herdr-tasks skill and the jw plugin for Claude Code). It does not touch keys.json."))
+      .child(div().text_color(t.muted).child("Runs the published install.sh (mods, layout, themes and the jw plugin for Claude Code). It does not touch keys.json."))
       .child(div().flex().child(go))
       .child(lines.length ? v_flex().gap(3).p(10).rounded(8).bg(t.surface).text_size(12).text_color(t.muted).children(lines.map((l) => div().child(l.slice(0, 110)))) : div())
       .child(div().text_size(11).text_color(t.dim).child(this.phase === "idle" ? "Enter starts it too." : "Restart Herdr to load the new mods."));

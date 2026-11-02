@@ -21,7 +21,7 @@ T=$(mktemp -d); trap 'rm -rf "$T"' EXIT
 curl -fsSL "$URL" | tar -xz -C "$T" --strip-components=1
 [ -f "$T/sync.sh" ] || die "that archive is not herdr-jw ($URL)"
 sh "$T/sync.sh" push </dev/null
-echo "herdr-jw: mods, layout, themes and the herdr-tasks skill are in $H"
+echo "herdr-jw: mods, layout and themes are in $H"
 
 # Add our shortcuts to keys.json; drop the tab.* ones (there are no tabs) and the ones of mods that jw-settings replaced and the Repos shortcut (now a button). Keep a backup if it changes.
 if [ "$KEYS" = 1 ] && [ -f "$H/keys.json" ]; then

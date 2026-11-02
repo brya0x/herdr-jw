@@ -29,8 +29,7 @@ herdr/                             what Herdr loads
 ├── layouts/                       jw.json
 └── config/                        keys.json (shortcuts)
 claude/                            what Claude Code loads
-├── plugins/jw/                    jw:tasks, jw:role
-└── skills/                        herdr-tasks
+└── plugins/jw/                    jw:tasks, jw:role
 internals/
 └── themes/                        palettes and scripts that serve Herdr and Claude Code at once
 ```
@@ -44,7 +43,7 @@ curl -fsSL https://raw.githubusercontent.com/brya0x/herdr-jw/main/install.sh | s
 ```
 
 You need Herdr (opened once), `curl`, `tar`, `rsync` and `python3`, on macOS. The script downloads the repo and
-copies the mods, layout, themes and the `herdr-tasks` skill to `~/.config/herdr-app`. It also adds the shortcuts
+copies the mods, layout and themes to `~/.config/herdr-app`. It also adds the shortcuts
 below to `keys.json` and removes the `tab.*` ones; if anything changes it leaves a `keys.json.bak-<date>` copy.
 
 - `| sh -s -- --no-keys` leaves `keys.json` alone.
@@ -89,11 +88,11 @@ A workspace's repos go to `<workspace>/worktrees/<repo>/<folder>`; the others, t
 `.jw.toml`. The workspace is recognised by the repo (even if its folder in `repos/` is a link elsewhere), not by the
 folder you launch from.
 
-### Tasks with a loop (`herdr/mods/factory-tasks` + `claude/skills/herdr-tasks`)
+### Tasks with a loop (`herdr/mods/factory-tasks` + `claude/plugins/jw`)
 
 `cmd-shift-t` opens the workspace's task list (jw's Markdown, one per folder). When the agent ends a turn it gets
 the next ready task, up to 20 laps or until everything is done or a task is blocked. The `n/m` counter shows in the
-bar. The `herdr-tasks` skill teaches the agent to write its plan there.
+bar. The `jw:tasks` skill teaches the agent to write its plan there.
 
 ### Artifacts to approve (`herdr/mods/artifacts-jw`)
 

@@ -19,7 +19,7 @@ case ${1:-} in
     mkdir -p "$H/layouts"; cp "$R/herdr/layouts/jw.json" "$H/layouts/jw.json"
     mkdir -p "$H/data/jw-themes"; cp "$R"/internals/themes/*.json "$R/internals/themes/build.py" "$R/internals/themes/use.py" "$H/data/jw-themes/"
     python3 "$R/internals/themes/build.py" >/dev/null
-    mkdir -p "$HOME/.claude/skills/herdr-tasks"; cp "$R/claude/skills/herdr-tasks/SKILL.md" "$HOME/.claude/skills/herdr-tasks/SKILL.md" ;;
+    rm -rf "$HOME/.claude/skills/herdr-tasks" ;; # the jw:tasks skill of the plugin replaced this copy
   pull)
     for m in $MODS; do mkdir -p "$R/herdr/mods/$m"; rs --delete "$H/mods/$m/" "$R/herdr/mods/$m/"; done
     cp "$H/layouts/jw.json" "$R/herdr/layouts/jw.json"
