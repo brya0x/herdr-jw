@@ -4,7 +4,7 @@
 // until its change differs). Drawn with Herdr's own look and the terminal font Herdr is set to. Read-only: it never writes under .git.
 import { View, div } from "gpui-kit";
 import { v_flex, h_flex, Scrollbar, v_virtual_list } from "gpui-base";
-import { spaces, panes, focused, exec, readTextFile, writeTextFile, watchFolder, theme, settings, appHome, props } from "herdr";
+import { spaces, panes, focused, exec, readTextFile, writeTextFile, watchFolder, theme, settings, appHome, props, shared, setShared } from "herdr";
 import { parseNumstat, parseStatus, parseNameStatus, parseLog, chooseBase, diffRows, signature, seenKey, isSeen, ago } from "./lib.js";
 
 const SCOPES = [["work", "Sin commit"], ["branch", "Rama"], ["commits", "Commits"]];
@@ -178,7 +178,9 @@ export default class Diff extends View {
       .when(on, (e) => e.bg(t.selected)).when(!on, (e) => e.hover((s) => s.bg(t.hover))).on_click((_e, cx) => onClick(cx)).child(label);
   }
 
-  fileRow(f, t) {
+  side() { return shared("jw.diff.side") !== false; } // the file list beside the diff (default) or above it
+
+  fileRow(f, t, side) {
     const parts = f.path.split("/"), name = parts.pop(), seen = isSeen(this.marks, this.root, this.scopeKey(), f);
     const color = f.status === "A" ? t.ansi2 : f.status === "D" || f.status === "U" ? t.ansi1 : t.blocked;
     return h_flex().id(`file-${f.path}`).h(28).flex_none().px(6).gap(6).items_center().rounded(7).when(this.open === f.path, (e) => e.bg(t.selected)).hover((s) => s.bg(t.hover))
@@ -186,7 +188,9 @@ export default class Diff extends View {
         .when(seen, (e) => e.bg(t.accent).text_color(t.accent_foreground).text_size(11).child("✓")).on_click((_e, cx) => this.toggleSeen(f, cx)))
       .child(h_flex().id(`open-${f.path}`).flex_1().min_w(0).h_full().gap(8).items_center().cursor_pointer().on_click((_e, cx) => this.pick(f.path, cx))
         .child(div().w(14).flex_none().text_size(11).text_color(color).child(f.status))
-        .child(h_flex().flex_1().min_w(0).text_color(seen ? t.dim : t.foreground).child(div().text_color(t.dim).truncate().child(parts.length ? parts.join("/") + "/" : "")).child(div().min_w(0).truncate().child(name)))
+        .child(side
+          ? h_flex().flex_1().min_w(0).gap(6).text_color(seen ? t.dim : t.foreground).child(div().min_w(0).truncate().child(name)).child(div().flex_1().min_w(0).text_color(t.dim).truncate().text_size(11).child(parts.join("/")))
+          : h_flex().flex_1().min_w(0).text_color(seen ? t.dim : t.foreground).child(div().text_color(t.dim).truncate().child(parts.length ? parts.join("/") + "/" : "")).child(div().min_w(0).truncate().child(name)))
         .when(f.add > 0, (e) => e.child(div().text_size(11).text_color(t.ansi2).child(`+${f.add}`)))
         .when(f.del > 0, (e) => e.child(div().text_size(11).text_color(t.ansi1).child(`−${f.del}`))));
   }
@@ -203,6 +207,7 @@ export default class Diff extends View {
         .child(div().flex_1())
         .when(!inCommitList && this.files.length > 0, (e) => e.child(div().text_size(11).text_color(t.dim).child(`${seenCount}/${this.files.length} vistos`)))
         .child(div().text_size(11).text_color(t.ansi2).child(`+${add}`)).child(div().text_size(11).text_color(t.ansi1).child(`−${del}`))
+        .when(!inCommitList, (e) => e.child(this.btn("layout", this.side() ? "▥" : "▤", false, (cx) => { setShared("jw.diff.side", !this.side()); cx.notify(); })))
         .child(this.btn("refresh", "↻", false, (cx) => { this.loading = false; this.refresh(cx); })))
       .child(h_flex().px(10).pb(8).gap(2).children(SCOPES.map(([k, l]) => this.btn(`scope-${k}`, l, this.scope === k, (cx) => this.go(k, null, cx)))));
     const empty = this.error || this.hint || (this.loading ? "Leyendo cambios…" : this.root ? "Sin cambios" : "Sin carpeta");
@@ -213,19 +218,29 @@ export default class Diff extends View {
             .child(div().flex_1().min_w(0).truncate().child(c.subject))
             .child(div().flex_none().text_size(11).text_color(t.dim).child(ago(c.time)))))
         .when(!this.commits.length, (e) => e.child(div().p(8).text_color(t.dim).child(empty)))
-      : v_flex().flex_1().min_h(0)
-        .when(this.scope === "commits" && this.commit, (e) => e.child(h_flex().flex_none().h(32).px(10).gap(8).items_center().border_b(1).border_color(t.border)
-          .child(this.btn("back", "‹ commits", false, (cx) => this.go("commits", null, cx)))
-          .child(div().text_size(11).text_color(t.accent).child(this.commit.short)).child(div().flex_1().min_w(0).truncate().text_size(12).text_color(t.muted).child(this.commit.subject))))
-        .child(v_flex().id("diff-files").flex_none().h(Math.min(200, Math.max(44, this.files.length * 28 + 12))).overflow_y_scrollbar().p(6).border_b(1).border_color(t.border)
-          .children(this.files.map((f) => this.fileRow(f, t))).when(!this.files.length, (e) => e.child(div().p(8).text_color(t.dim).child(empty))))
-        .when(this.limited, (e) => e.child(div().px(12).py(4).text_size(11).text_color(t.dim).child("Mostrando los primeros 1.000 archivos")))
-        .child(div().flex_1().min_h(0).relative().font_family(settings().font_family ?? "JetBrains Mono").text_size(metrics().size)
+      : (() => {
+        const side = this.side();
+        const commitHead = this.scope === "commits" && this.commit
+          ? h_flex().flex_none().h(32).px(10).gap(8).items_center().border_b(1).border_color(t.border)
+            .child(this.btn("back", "‹ commits", false, (cx) => this.go("commits", null, cx)))
+            .child(div().text_size(11).text_color(t.accent).child(this.commit.short)).child(div().flex_1().min_w(0).truncate().text_size(12).text_color(t.muted).child(side ? "" : this.commit.subject))
+          : null;
+        const list = v_flex().id("diff-files").overflow_y_scrollbar().p(6)
+          .when(side, (e) => e.flex_1().min_h(0)).when(!side, (e) => e.flex_none().h(Math.min(200, Math.max(44, this.files.length * 28 + 12))).border_b(1).border_color(t.border))
+          .children(this.files.map((f) => this.fileRow(f, t, side))).when(!this.files.length, (e) => e.child(div().p(8).text_color(t.dim).child(empty)));
+        const limited = this.limited ? div().px(12).py(4).text_size(11).text_color(t.dim).child("Mostrando los primeros 1.000 archivos") : null;
+        const diff = div().flex_1().min_h(0).min_w(0).h_full().relative().font_family(settings().font_family ?? "JetBrains Mono").text_size(metrics().size)
           .child(div().id("diff-x").size_full().overflow_x_scrollbar()
             .child(div().w_full().min_w(this.diffWidth).h_full().child(v_virtual_list("diff-rows", this.rows.length, metrics().row, (i) => String(i),
               (range) => this.rows.slice(range.start, range.end).map((row) => this.diffRow(row, t))).size_full())))
           .child(Scrollbar.vertical("diff-rows").viewport_from_layout().absolute().inset_0())
-          .when(!this.open && this.files.length > 0, (e) => e.child(div().absolute().top(6).px(12).text_color(t.dim).child("Elige un archivo para ver sus cambios"))));
+          .when(!this.open && this.files.length > 0, (e) => e.child(div().absolute().top(6).px(12).text_color(t.dim).child("Elige un archivo para ver sus cambios")));
+        if (!side) return v_flex().flex_1().min_h(0).when(Boolean(commitHead), (e) => e.child(commitHead)).child(list).when(Boolean(limited), (e) => e.child(limited)).child(diff);
+        return h_flex().flex_1().min_h(0)
+          .child(v_flex().flex_none().w(Math.max(240, Math.round(metrics().size * 22))).h_full().min_h(0).border_r(1).border_color(t.border)
+            .when(Boolean(commitHead), (e) => e.child(commitHead)).child(list).when(Boolean(limited), (e) => e.child(limited)))
+          .child(diff);
+      })();
     return v_flex().id("diff-jw").size_full().min_h(0).overflow_hidden().bg(t.background).text_color(t.foreground).text_size(13).track_focus(this.handle)
       .child(head).child(body)
       .when(Boolean(this.note), (e) => e.child(div().px(10).pb(8).text_size(11).text_color(t.ansi1).child(this.note)));
