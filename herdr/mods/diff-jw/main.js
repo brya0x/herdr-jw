@@ -5,7 +5,7 @@
 import { View, div } from "gpui-kit";
 import { v_flex, h_flex, Scrollbar, v_virtual_list } from "gpui-base";
 import { spaces, panes, focused, exec, readTextFile, writeTextFile, watchFolder, theme, settings, appHome, props, shared, setShared } from "herdr";
-import { parseNumstat, parseStatus, parseNameStatus, parseLog, chooseBase, diffRows, signature, seenKey, isSeen, ago } from "./lib.js";
+import { parseNumstat, parseStatus, parseNameStatus, parseLog, chooseBase, diffRows, splitRows, signature, seenKey, isSeen, ago } from "./lib.js";
 
 const SCOPES = [["work", "Sin commit"], ["branch", "Rama"], ["commits", "Commits"]];
 const MAX_LINES = 1500;
@@ -29,7 +29,7 @@ const countLines = (text) => text ? text.split("\n").length - Number(text.endsWi
 
 export default class Diff extends View {
   init(_props, cx) {
-    this.scope = "work"; this.commit = null; this.commits = []; this.files = []; this.rows = []; this.diffWidth = 0;
+    this.scope = "work"; this.commit = null; this.commits = []; this.files = []; this.rows = []; this.pairs = []; this.diffWidth = 0;
     this.base = null; this.marks = {}; this.handle = cx.focus_handle();
     this.marksFile = `${appHome()}/data/diff-seen.json`;
     cx.spawn(async (cx) => {
@@ -133,9 +133,13 @@ export default class Diff extends View {
 
   setLines(lines) {
     this.rows = diffRows(lines);
-    const { cw, gutter } = metrics();
-    this.diffWidth = Math.max(300, ...lines.map((l) => l.length * cw + gutter + 40));
+    this.pairs = splitRows(lines);
+    const { cw, gutter } = metrics(), longest = Math.max(0, ...lines.map((l) => l.length));
+    this.diffWidth = Math.max(300, longest * cw + gutter + 40);
   }
+
+  // the diff as old | new (GitHub's side by side), or one column (default). Side by side shares the pane's width: a long line is cut, not scrolled.
+  split() { return shared("jw.diff.split") === true; }
 
   pick(path, cx) {
     this.open = this.open === path ? null : path; this.setLines([]); this.note = null; this.closed = !this.open;
@@ -162,6 +166,17 @@ export default class Diff extends View {
       try { await writeTextFile(this.marksFile, JSON.stringify(this.marks), await readTextFile(this.marksFile)); }
       catch { this.note = "No se pudo guardar la marca de visto"; }
     });
+  }
+
+  pairRow(r, t) {
+    const { row, gutter } = metrics();
+    if (r.kind === "@") return div().w_full().px(12).h(row).flex_none().truncate().bg(t.raised).text_color(t.dim).child(r.text);
+    if (r.kind === "") return div().w_full().px(12).h(row).flex_none().truncate().text_color(t.dim).child(r.text);
+    const half = (side, kind) => h_flex().flex_1().min_w(0).h_full().gap(10).when(Boolean(side) && kind === "+", (e) => e.bg(t.ansi2 + "18")).when(Boolean(side) && kind === "-", (e) => e.bg(t.ansi1 + "18"))
+      .when(!side, (e) => e.bg(t.raised + "60"))
+      .child(div().w(gutter).flex_none().text_right().text_color(t.dim).child(side ? String(side.number) : ""))
+      .child(div().flex_1().min_w(0).truncate().child(side?.text ?? ""));
+    return h_flex().w_full().h(row).flex_none().child(half(r.left, r.context ? " " : "-")).child(div().w(1).h_full().flex_none().bg(t.border)).child(half(r.right, r.context ? " " : "+"));
   }
 
   diffRow({ kind, number, text }, t) {
@@ -209,7 +224,10 @@ export default class Diff extends View {
         .child(div().text_size(11).text_color(t.ansi2).child(`+${add}`)).child(div().text_size(11).text_color(t.ansi1).child(`−${del}`))
         .when(!inCommitList, (e) => e.child(this.btn("layout", this.side() ? "▥" : "▤", false, (cx) => { setShared("jw.diff.side", !this.side()); cx.notify(); })))
         .child(this.btn("refresh", "↻", false, (cx) => { this.loading = false; this.refresh(cx); })))
-      .child(h_flex().px(10).pb(8).gap(2).children(SCOPES.map(([k, l]) => this.btn(`scope-${k}`, l, this.scope === k, (cx) => this.go(k, null, cx)))));
+      .child(h_flex().px(10).pb(8).gap(2).items_center().children(SCOPES.map(([k, l]) => this.btn(`scope-${k}`, l, this.scope === k, (cx) => this.go(k, null, cx))))
+        .when(!inCommitList, (e) => e.child(div().flex_1())
+          .child(this.btn("mode-one", "Unificado", !this.split(), (cx) => { setShared("jw.diff.split", false); cx.notify(); }))
+          .child(this.btn("mode-split", "Lado a lado", this.split(), (cx) => { setShared("jw.diff.split", true); cx.notify(); }))));
     const empty = this.error || this.hint || (this.loading ? "Leyendo cambios…" : this.root ? "Sin cambios" : "Sin carpeta");
     const body = inCommitList
       ? v_flex().id("diff-commits").flex_1().min_h(0).overflow_y_scrollbar().p(6).children(this.commits.map((c) =>
@@ -231,8 +249,8 @@ export default class Diff extends View {
         const limited = this.limited ? div().px(12).py(4).text_size(11).text_color(t.dim).child("Mostrando los primeros 1.000 archivos") : null;
         const diff = div().flex_1().min_h(0).min_w(0).h_full().relative().font_family(settings().font_family ?? "JetBrains Mono").text_size(metrics().size)
           .child(div().id("diff-x").size_full().overflow_x_scrollbar()
-            .child(div().w_full().min_w(this.diffWidth).h_full().child(v_virtual_list("diff-rows", this.rows.length, metrics().row, (i) => String(i),
-              (range) => this.rows.slice(range.start, range.end).map((row) => this.diffRow(row, t))).size_full())))
+            .child(div().w_full().when(!this.split(), (e) => e.min_w(this.diffWidth)).h_full().child(v_virtual_list("diff-rows", this.split() ? this.pairs.length : this.rows.length, metrics().row, (i) => String(i),
+              (range) => (this.split() ? this.pairs : this.rows).slice(range.start, range.end).map((row) => (this.split() ? this.pairRow(row, t) : this.diffRow(row, t)))).size_full())))
           .child(Scrollbar.vertical("diff-rows").viewport_from_layout().absolute().inset_0())
           .when(!this.open && this.files.length > 0, (e) => e.child(div().absolute().top(6).px(12).text_color(t.dim).child("Elige un archivo para ver sus cambios")));
         if (!side) return v_flex().flex_1().min_h(0).when(Boolean(commitHead), (e) => e.child(commitHead)).child(list).when(Boolean(limited), (e) => e.child(limited)).child(diff);

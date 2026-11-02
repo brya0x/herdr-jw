@@ -1,6 +1,6 @@
 // bun lib.test.js
 import assert from "node:assert/strict";
-import { wrapRows, parseNumstat, parseStatus, parseNameStatus, parseLog, chooseBase, diffRows, signature, seenKey, isSeen, ago } from "./lib.js";
+import { splitRows, wrapRows, parseNumstat, parseStatus, parseNameStatus, parseLog, chooseBase, diffRows, signature, seenKey, isSeen, ago } from "./lib.js";
 
 assert.deepEqual(parseNumstat("3\t1\ta.js\0-\t-\timg.png\0"), { "a.js": { add: 3, del: 1, binary: false }, "img.png": { add: 0, del: 0, binary: true } });
 assert.deepEqual(parseNumstat("1\t0\ta\tb.js\0")["a\tb.js"].add, 1); // a tab inside a path
@@ -31,4 +31,13 @@ assert.equal(ago(1000, 1000 + 120), "2 min"); assert.equal(ago(0, 7200), "2 h");
 assert.deepEqual(wrapRows([{ kind: "+", number: 1, text: "abcdefghijkl" }], 10, true).map((r) => [r.text, Boolean(r.cont)]), [["abcdefghij", false], ["kl", true]]);
 assert.equal(wrapRows([{ kind: "+", number: 1, text: "abcdefghijkl" }], 10, false).length, 1);
 assert.equal(wrapRows([{ kind: "@", text: "@@ -1 +1 @@ " + "x".repeat(40) }], 10, true).length, 1);
+// side by side: removed and added lines pair up in order, the longer run leaves the other side empty, context is on both sides with its own numbers
+const sp = splitRows(["@@ -1,4 +1,4 @@", " a", "-b", "-c", "+B", " d", "+e"]);
+assert.deepEqual(sp.map((r) => r.kind), ["@", "pair", "pair", "pair", "pair", "pair"]);
+assert.deepEqual([sp[1].left.number, sp[1].right.number, sp[1].context], [1, 1, true]);
+assert.deepEqual([sp[2].left.text, sp[2].right.text, sp[2].left.number, sp[2].right.number], ["b", "B", 2, 2]);
+assert.deepEqual([sp[3].left.text, sp[3].right], ["c", null]);
+assert.deepEqual([sp[4].left.number, sp[4].right.number], [4, 3]); // d: old line 4, new line 3 after one removed line more than added
+assert.deepEqual([sp[5].left, sp[5].right.text], [null, "e"]);
+assert.equal(splitRows(["\\ No newline at end of file"])[0].kind, ""); // anything else is a plain row
 console.log("ok");

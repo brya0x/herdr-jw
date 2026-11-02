@@ -80,3 +80,21 @@ export function wrapRows(rows, width, wrap) {
   }
   return out;
 }
+
+// The diff as GitHub's side by side view: each row has an old side (left) and a new side (right). A run of removed lines and the added
+// lines that follow it are paired in order (the longer one leaves the other side empty); a context line is on both sides.
+export function splitRows(lines) {
+  const out = []; let old = 0, next = 0, dels = [], adds = [];
+  const flush = () => { const n = Math.max(dels.length, adds.length); for (let i = 0; i < n; i++) out.push({ kind: "pair", left: dels[i] ?? null, right: adds[i] ?? null }); dels = []; adds = []; };
+  for (const line of lines) {
+    const m = /^@@ -(\d+)(?:,\d+)? \+(\d+)/.exec(line);
+    if (m) { flush(); old = +m[1]; next = +m[2]; out.push({ kind: "@", text: line }); continue; }
+    const k = line[0], text = line.slice(1) || " ";
+    if (k === "-") dels.push({ number: old++, text });
+    else if (k === "+") adds.push({ number: next++, text });
+    else if (k === " ") { flush(); out.push({ kind: "pair", context: true, left: { number: old++, text }, right: { number: next++, text } }); }
+    else { flush(); out.push({ kind: "", text: line }); }
+  }
+  flush();
+  return out;
+}
