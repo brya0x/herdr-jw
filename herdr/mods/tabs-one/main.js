@@ -147,7 +147,7 @@ export default class Tabs extends View {
     };
     // Diff: a pane beside the focused one that runs the diff-jw mod (a pane has its border, focus, zoom and swap); again closes it.
     const diffPane = () => panes().find((p) => p.tab === focused()?.tab && p.mod === "diff-jw");
-    const diffButton = () => barButton("diff", "Diff", "mods/tabs-one/diff.svg", Boolean(diffPane()), () => {
+    const diffButton = () => barButton("diff", "jw:diff", "mods/tabs-one/diff.svg", Boolean(diffPane()), () => {
       const open = diffPane();
       if (open) return run("pane.close", { pane: open.pane });
       const f = focused();
