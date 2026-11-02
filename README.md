@@ -112,7 +112,7 @@ Also `ls`, `wait` and `rm`.
 
 Claude Code skills, prefixed `jw:`:
 
-- `jw:tasks`: take a plan to the end with `jw tasks`.
+- `jw:tasks`: writes the plan as the workspace's Herdr task list and works it, one task per turn, while the Tasks loop is on.
 - `jw:role`: `/jw:role <role>` puts the session in a role (`brain`, the orchestrator that hands work out in worktrees; `researcher`, read-only with sources). Roles are `<name>.md` files in three layers, and the one closest to the project wins: `.claude/roles/`, `~/.claude/roles/` and the plugin's. The plugin's use Herdr's tools (`hc`, `wt.js`, `artifact.js`) and are called `brain` and `researcher`, like jw's: if `~/.claude/roles/` has one with the same name, that one wins. The roles are written in Spanish, like jw's.
 
 ```sh
