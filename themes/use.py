@@ -5,7 +5,7 @@ import glob, json, os, re, shlex, subprocess, sys, time
 import build
 
 STATE = f"{build.H}/data/jw-theme.json"
-CLAUDE_LAG = 0.2  # seconds to hold Herdr back so it repaints with Claude Code (measured with screenshots: Claude ~0.1-0.3 s behind)
+CLAUDE_LAG = 0.1  # seconds to hold Herdr back so it repaints with Claude Code (screenshots: Claude ~0.1-0.3 s behind; 0.2 left Herdr 1 ms ahead)
 DEFAULT = {"mode": "dark", "light": "tokyo-night-day", "dark": "tokyo-night"}
 
 def palettes():
