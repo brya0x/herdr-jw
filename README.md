@@ -100,7 +100,7 @@ claude plugin install jw@herdr-jw
 Diez temas (One, Catppuccin, Tokyo Night, Gruvbox y Solarized, cada uno oscuro y claro) con una sola paleta por
 tema, de la que `build.py` saca el tema de Herdr y el de Claude Code (`~/.claude/themes/`). `cmd-shift-k` abre
 el selector: **Claro**, **Oscuro** o **Sistema**, y qué tema oscuro y claro usar. En Sistema, Herdr sigue al
-sistema y el tema de Claude cambia con él. Claude usa siempre un solo tema, `JW` (`~/.claude/themes/jw.json`), que se reescribe con la paleta elegida; Claude Code repinta solo las sesiones abiertas cuando ese archivo cambia, trabajen o no. Una sesión que aún no usa `JW` se pasa a él una vez con `/theme` (teclas por `hc`, también si está trabajando) y, si su selector no lo lista (se abrió antes de que existiera `~/.claude/themes/`), se reinicia con `claude --resume` y conserva su conversación. Se dejan quietas las que tienen texto escrito y las lanzadas con `--add-dir`.
+sistema y el tema de Claude cambia con él. Claude usa siempre un solo tema, `JW` (`~/.claude/themes/jw.json`), que se reescribe con la paleta elegida; Claude Code repinta solo las sesiones abiertas cuando ese archivo cambia, trabajen o no. Una sesión que aún no usa `JW` se pasa a él una vez con `/theme` (teclas por `hc`, también si está trabajando) Se dejan quietas las que tienen texto escrito. Una sesión que se abrió antes de que existiera `~/.claude/themes/` no lista `JW` en su `/theme`: no se puede mover sola, y hay que reiniciarla a mano con `claude --resume`.
 Desde la terminal: `use.py mode light|dark|system`, `set <slug>` y `apply`.
 
 ### Navegación y layout

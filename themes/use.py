@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """use.py mode light|dark|system  |  set <slug>  |  apply : the jw theme in Herdr and Claude Code.
 State is data/jw-theme.json {mode, light, dark}; the palettes are the *.json beside this file."""
-import glob, json, os, re, shlex, subprocess, sys, time
+import glob, json, os, re, subprocess, sys, time
 import build
 
 STATE = f"{build.H}/data/jw-theme.json"
@@ -58,12 +58,6 @@ def status(t):
         if x["address"] == t: return x.get("agent"), x.get("status")
     return None, None
 
-def idle(t, secs=30):
-    for _ in range(secs * 2):
-        if status(t) == ("claude-code", "idle"): return True
-        time.sleep(0.5)
-    return False
-
 def pick(t, name):
     """Open /theme in claude t and choose `name`. Returns ok | busy (text typed) | missing (the picker does not list it)."""
     prompt = [l for l in hc("read", t).splitlines() if l.startswith("❯")]
@@ -81,39 +75,13 @@ def pick(t, name):
     hc("keys", t, "enter" if "✔" not in rows[to[0]] or d else "esc")
     return "ok"
 
-def restart(t):
-    """Exit claude t and bring the same conversation back (claude --resume), so it reads the config again. Where claude ran
-    in a shell the shell stays and gets the command; where claude was the terminal's program (it ends with it) a pane
-    beside it runs the resume and the old pane closes. Returns the terminal that now has claude, or None (nothing lost:
-    the conversation is a transcript, `claude --resume` brings it back). Flags the session was started with (--add-dir...) are not kept: live() leaves such a session alone."""
-    cwd = json.loads(hc("get", t))["cwd"]
-    hc("keys", t, "/", "e", "x", "i", "t", "enter")
-    sid = None
-    for _ in range(20):
-        m = re.findall(r"claude --resume ([0-9a-f-]{36})", hc("read", t))
-        if m: sid = m[-1]; break
-        time.sleep(0.25)
-    if not sid: return None
-    time.sleep(1)
-    if json.loads(hc("get", t))["state"] == "live":  # a shell is left
-        hc("keys", t, *[("space" if ch == " " else ch) for ch in f"claude --resume {sid}"], "enter")
-        return t if idle(t) else None
-    pane = next(x["pane"] for sp in json.loads(subprocess.run(["herdr-app", "ls"], capture_output=True, text=True).stdout)["spaces"]
-                for tb in sp["tabs"] for x in tb["terminals"] if x["terminal"] == t)
-    r = subprocess.run(["herdr-app", "do", "pane.split", json.dumps({"direction": "right", "pane": pane,
-        "argv": ["sh", "-c", f"cd {shlex.quote(cwd)} && exec claude --resume {sid}"]})], capture_output=True, text=True)
-    new = json.loads(r.stdout)
-    if not idle(new["terminal"]): return None
-    subprocess.run(["herdr-app", "do", "pane.close", json.dumps({"pane": pane})], capture_output=True)
-    return new["terminal"]
-
 LIVE = f"{build.H}/data/jw-theme-live.json"  # {"done": terminals whose claude uses the JW theme (they repaint by themselves), "skip": ones that cannot be moved}
 
 def live():
     """Claude Code repaints a running session when ~/.claude/themes/jw.json changes, but only if the session uses the JW
     theme. Once per session, switch it with /theme (busy ones too: it opens mid-turn and the turn goes on). A session whose
-    picker does not list JW (it started before ~/.claude/themes existed) is restarted with its conversation, if it is
-    idle. Left alone: text typed, waiting on a permission, and --add-dir ones that need a restart (it is lost on resume; remembered, not retried)."""
+    picker does not list JW (it started before ~/.claude/themes existed) cannot be moved: it is remembered, not retried,
+    and needs a restart by hand (claude --resume). Left alone: text typed and waiting on a permission."""
     try:
         st = json.load(open(LIVE)); done, skip = set(st["done"]), set(st["skip"])
     except (OSError, ValueError, KeyError, TypeError): done, skip = set(), set()
@@ -126,10 +94,7 @@ def live():
         if x.get("agent") != "claude-code" or x.get("state") != "live" or t in done | skip or x.get("status") not in ("idle", "done", "working"): continue
         try:
             r = pick(t, "JW")
-            if r == "missing" and x["status"] != "working":  # never restart one in the middle of a turn
-                if "--add-dir" in " ".join(json.loads(hc("get", t))["argv"]): skip.add(t); continue
-                t = restart(t)
-                r = pick(t, "JW") if t else r
+            if r == "missing": skip.add(t)
             if r == "ok": done.add(t)
         except (subprocess.SubprocessError, ValueError, KeyError, StopIteration):
             hc("keys", t, "esc")
