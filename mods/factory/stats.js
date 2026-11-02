@@ -122,6 +122,6 @@ export function findings({ fails = {}, setup = [], repos = [], gh = [], usageErr
   if (gh.length) add({ source: "fábrica", title: `gh falló en ${gh.length} worktree${gh.length > 1 ? "s" : ""}`, sub: "estado de los PRs", detail: gh.slice(0, 8).join("\n"), ts: null, path: "",
     task: `gh no pudo leer los PRs de algunos worktrees:\n${gh.slice(0, 8).join("\n")}\n\nRevisa si falta login (gh auth status), red o remoto, y dime qué arreglar.` });
   if (usageError) add({ source: "fábrica", title: "no se pudo leer el uso de claude", sub: "pestañas Productividad y Gasto", detail: usageError, ts: null, path: "",
-    task: `El panel factory no pudo leer los transcripts de claude: ${usageError}\n\nLos scripts están en ~/.config/herdr-app/mods/factory (flow.py, fails.py) y mods/factory-usage/usage.py. Encuentra la causa.` });
+    task: `El panel factory no pudo leer los transcripts de claude: ${usageError}\n\nLos scripts están en ~/.config/herdr-app/mods/factory (flow.py, fails.py) y mods/jw-settings/usage.py. Encuentra la causa.` });
   return out.sort((a, b) => (b.ts ?? "").localeCompare(a.ts ?? ""));
 }

@@ -10,10 +10,8 @@
     "cmd-alt-[": "agent.prev",
     "cmd-n": "space.new",
     "cmd-shift-n": "mod.open:factory",
-    "cmd-shift-u": "mod.open:factory-usage",
     "cmd-shift-t": "mod.open:factory-tasks",
     "cmd-shift-v": "tabs-one.repos",
-    "cmd-shift-k": "mod.open:themes-jw",
     "cmd-shift-a": "mod.open:artifacts-jw",
     "cmd-p": "mod.open:picker-one",
     "cmd-shift-p": "app.palette",
@@ -47,7 +45,7 @@
     "ctrl-7": "space.select:7",
     "ctrl-8": "space.select:8",
     "ctrl-9": "space.select:9",
-    "cmd-alt-u": "mod.open:update-jw"
+    "cmd-shift-j": "mod.open:jw-settings"
   },
   "terminal": {
     "cmd-c": "terminal.copy",

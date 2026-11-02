@@ -5,7 +5,8 @@
 set -eu
 H=${HERDR_APP_HOME:-$HOME/.config/herdr-app}
 R=$(cd "$(dirname "$0")" && pwd)
-MODS="factory factory-usage worktree-wt tabs-one picker-one factory-tasks spaces-one themes-jw artifacts-jw update-jw"
+MODS="factory worktree-wt tabs-one picker-one factory-tasks spaces-one jw-settings artifacts-jw"
+OLD_MODS="themes-jw factory-usage update-jw"  # replaced by jw-settings: removed from the live config on push
 # gpui-kit.d.ts and jsconfig.json are written by Herdr on every start
 rs() { rsync -a "$@" --exclude=gpui-kit.d.ts --exclude=jsconfig.json --exclude='*.error' --exclude=.DS_Store; }
 case ${1:-} in
@@ -13,6 +14,7 @@ case ${1:-} in
     # tabs-one cannot import another mod: its copy of the task list code comes from factory-tasks
     cp "$R/mods/factory-tasks/lib.js" "$R/mods/tabs-one/tasks-lib.js"
     for m in $MODS; do mkdir -p "$H/mods/$m"; rs "$R/mods/$m/" "$H/mods/$m/"; done
+    for m in $OLD_MODS; do rm -rf "$H/mods/$m"; done
     mkdir -p "$H/layouts"; cp "$R/layouts/jw.json" "$H/layouts/jw.json"
     mkdir -p "$H/data/jw-themes"; cp "$R"/themes/*.json "$R/themes/build.py" "$R/themes/use.py" "$H/data/jw-themes/"
     python3 "$R/themes/build.py" >/dev/null

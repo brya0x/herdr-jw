@@ -1,5 +1,5 @@
-// What the person's claude has cost: per project and per week, read from its transcripts by usage.py.
-import { View, div } from "gpui-kit";
+// Section "Costos": what the person's claude has cost, per project and per week, read from its transcripts by usage.py.
+import { div } from "gpui-kit";
 import { v_flex, h_flex } from "gpui-base";
 import { exec, theme, appHome, home } from "herdr";
 
@@ -8,8 +8,8 @@ const money = (n) => `$${n >= 100 ? n.toFixed(0) : n.toFixed(2)}`;
 const PERIODS = [["week", "semana"], ["4w", "4 semanas"], ["all", "todo"]];
 const sum = (rows) => rows.reduce((a, r) => ({ input: a.input + r.input, cache_read: a.cache_read + r.cache_read, output: a.output + r.output, cost: a.cost + (r.cost ?? 0), unrated: a.unrated || r.cost === undefined }), { input: 0, cache_read: 0, output: 0, cost: 0, unrated: false });
 
-export default class Usage extends View {
-  init(_props, cx) {
+export class UsageSection {
+  start(cx) {
     this.data = undefined;
     this.error = "";
     this.period = "4w";
@@ -23,7 +23,7 @@ export default class Usage extends View {
     cx.notify();
     cx.spawn(async (cx) => {
       try {
-        const r = await exec("python3", ["-I", `${appHome()}/mods/factory-usage/usage.py`]);
+        const r = await exec("python3", ["-I", `${appHome()}/mods/jw-settings/usage.py`]);
         if (r.code !== 0) throw new Error(r.stderr.split("\n").filter(Boolean).pop() || "usage.py falló");
         this.data = JSON.parse(r.stdout);
       } catch (e) { this.error = String(e?.message ?? e); }
@@ -37,6 +37,8 @@ export default class Usage extends View {
       .when(on, (el) => el.bg(t.selected)).when(!on, (el) => el.hover((s) => s.bg(t.hover))).on_click((_e, cx) => onClick(cx)).child(label);
   }
 
+  key() { return false; }
+
   render() {
     const t = theme();
     const d = this.data;
@@ -48,7 +50,7 @@ export default class Usage extends View {
       .child(this.btn("m-tokens", "tokens", !cost, (cx) => { this.metric = "tokens"; cx.notify(); }))
       .child(this.btn("m-cost", "costo", cost, (cx) => { this.metric = "cost"; cx.notify(); }))
       .child(this.btn("reload", "↻", false, (cx) => this.load(cx)));
-    const root = v_flex().id("factory-usage").size_full().p(16).gap(10).bg(t.popover).text_size(13).child(head);
+    const root = v_flex().id("jw-usage").size_full().p(16).gap(10).child(head);
     if (this.error) return root.child(div().text_color(t.blocked).child(this.error));
     if (!d) return root.child(div().text_color(t.muted).child("leyendo los transcripts… (la primera vez tarda unos segundos)"));
 
