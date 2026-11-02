@@ -161,7 +161,7 @@ El costo muestra «sin tarifa» hasta que escribas `~/.config/herdr-app/data/fac
 ## Diferencias con jw
 
 - `[[env]] file = ".env"` se trata como `copy` (jw actual lo ignora).
-- No se copian `ports` ni el `.jw.toml` personal de `~/.config/jw/projects/`.
+- Los ajustes se leen como en jw: el `.jw.toml` del repo y, si no existe, el archivo personal `~/.config/jw/projects/<origen>.toml` (el primero que existe es el único que se lee). `ports`, `[dev]` y `[layout]` se ignoran, y `branch` y `workspace` también (jw tampoco los usa).
 - Una rama nueva parte de `HEAD`, como en jw.
 - Tras un `setup`, la tarea se pasa a claude como primer argumento (Herdr solo entrega `task` si `argv` es `claude`).
 - Sin `agents`, `cmd-alt-]` y `cmd-alt-[` pueden no seguir ninguna lista (sin probar).

@@ -7,7 +7,7 @@ import { readFileSync, existsSync, realpathSync, readdirSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import { homedir } from "node:os";
 import { dirname, resolve } from "node:path";
-import { parse, rootOf, folderOf, validFolder, setupScript, paneArgv, factoryRoot, ancestorsOf } from "./jwtoml.js";
+import { parse, rootOf, folderOf, validFolder, setupScript, paneArgv, factoryRoot, ancestorsOf, personalFile } from "./jwtoml.js";
 
 const die = (m) => { console.error(`wt: ${m}`); process.exit(1); };
 const run = (cmd, args, cwd) => { const r = spawnSync(cmd, args, { cwd, encoding: "utf8" }); return { ok: r.status === 0, out: (r.stdout ?? "").trim(), err: (r.stderr ?? "").trim() }; };
@@ -64,7 +64,10 @@ export function plan(argv, cwd = process.cwd()) {
   if (!top.ok) die(`${start} no es un repositorio git`);
   const main = git(top.out, "worktree", "list", "--porcelain").out.split("\n")[0].replace(/^worktree /, "");
   if (!name && fac) name = fac.repos.find((r) => { const p = repoPath(fac, r); return p && realpathSync(p) === realpathSync(main); })?.name ?? null;
-  const cfg = parse(existsSync(`${main}/.jw.toml`) ? readFileSync(`${main}/.jw.toml`, "utf8") : "");
+  // the repo's own .jw.toml, else jw's personal file for its origin (the first that exists is the only one read, as in jw)
+  const origin = git(main, "remote", "get-url", "origin");
+  const file = [`${main}/.jw.toml`, personalFile(homedir(), origin.ok ? origin.out : "", main)].find(existsSync);
+  let cfg; try { cfg = parse(file ? readFileSync(file, "utf8") : ""); } catch (e) { die(`${file}: ${e.message}`); }
   const owned = name && fac ? `${fac.ws}/worktrees/${name}` : factoryRoot(realpathSync(main), factoriesFor([cwd, start])); // by where we are, else by the repo
   const dest = `${owned ?? rootOf(cfg, main, homedir())}/${folder}`;
   if (existsSync(dest)) die(`ya existe ${dest}`);

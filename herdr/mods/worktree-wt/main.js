@@ -4,7 +4,7 @@
 import { View, div } from "gpui-kit";
 import { v_flex, h_flex, InputState, Input, Scrollbar } from "gpui-base";
 import { run, props, openOverlay, closeOverlay, theme, spaces, panes, exec, home, appHome, readTextFile, notify } from "herdr";
-import { parse as parseJw, rootOf, folderOf, validFolder, setupScript, paneArgv, factoryRoot, factoriesOf, ancestorsOf } from "./jwtoml.js";
+import { parse as parseJw, rootOf, folderOf, validFolder, setupScript, paneArgv, factoryRoot, factoriesOf, ancestorsOf, personalFile } from "./jwtoml.js";
 
 // Where a space is now: its first terminal's live folder, else where it was made.
 function place(s) {
@@ -153,7 +153,15 @@ export default class Worktree extends View {
         }
         if (repo && props().action === "remove") this.ahead = Number((await git(repo.top, ["rev-list", "--count", "HEAD", "--not", "--remotes"], this.on)).out) || 0;
         if (repo && !this.opening && props().action !== "remove") {
-          try { this.cfg = parseJw((await readTextFile(`${repo.main}/.jw.toml`, { on: this.on })) ?? ""); this.openMode = this.cfg.open; }
+          try {
+            // the repo's own .jw.toml, else jw's personal file for its origin (the first that exists is the only one read, as in jw)
+            let text = await readTextFile(`${repo.main}/.jw.toml`, { on: this.on });
+            if (text == null) {
+              const origin = (await git(repo.main, ["remote", "get-url", "origin"], this.on)).out;
+              try { text = await readTextFile(personalFile(this.userHome, origin, repo.main), { on: this.on }); } catch { text = null; }
+            }
+            this.cfg = parseJw(text ?? ""); this.openMode = this.cfg.open;
+          }
           catch (e) { this.cfgError = String(e?.message ?? e); }
           this.root = props()?.root || (await this.factoryRoot(repo.main)) || null; // the repo of a factory workspace: its worktrees folder
         }

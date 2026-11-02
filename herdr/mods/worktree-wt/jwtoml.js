@@ -29,8 +29,9 @@ function items(text, fail) {
 function value(raw, fail) {
   raw = raw.trim();
   if (raw[0] === '"' || raw[0] === "'") return unquote(raw, fail);
-  if (/^-?\d+$/.test(raw)) return Number(raw);
+  if (/^-?\d+(\.\d+)?$/.test(raw)) return Number(raw);
   if (raw === "true" || raw === "false") return raw === "true";
+  if (raw[0] === "{" && raw.endsWith("}")) return undefined; // an inline table ([[env]] set, [layout] leaves): jw does not use it either
   fail(`valor no soportado: ${raw}`);
 }
 
@@ -86,7 +87,7 @@ const strings = (v, key) => {
 function config(top, env, ports) {
   const setup = strings(top.setup, "setup").map((l) => l.trim()).filter(Boolean);
   for (const l of setup) for (const m of l.match(/\{[^}]*\}/g) ?? []) if (m !== "{name}" && m !== "{branch}") throw new Error(`.jw.toml: setup solo admite {name} y {branch}, no ${m}`);
-  const copy = [...strings(top.copy, "copy"), ...env.map((e) => e.file).filter((f) => typeof f === "string")];
+  const copy = [...new Set([...strings(top.copy, "copy"), ...env.map((e) => e.file).filter((f) => typeof f === "string")])];
   for (const p of copy) if (p.startsWith("/") || p.split("/").includes("..")) throw new Error(`.jw.toml: copy debe quedar dentro del repo: ${p}`);
   if (top.open !== undefined && top.open !== "shell" && top.open !== "claude") throw new Error('.jw.toml: open debe ser "shell" o "claude"');
   if (top.root !== undefined && typeof top.root !== "string") throw new Error(".jw.toml: root debe ser un texto");
@@ -107,6 +108,17 @@ export function rootOf(cfg, main, home) {
   if (r.startsWith("~/")) return clean(`${home}/${r.slice(2)}`);
   return clean(r.startsWith("/") ? r : `${main}/${r}`);
 }
+
+// jw reads a repository's settings from its own .jw.toml, else from the personal file <config dir>/projects/<key>.toml, and the first that
+// exists is the only one read (jw spec REQ-482/483). <key>: the `origin` in lowercase without scheme, user or .git, "/" as "_"; with no
+// origin, "local_" and the path with "/" as "_". The config dir of jw is ~/.config/jw.
+export function personalKey(origin, path) {
+  const o = (origin ?? "").trim().toLowerCase();
+  if (!o) return `local_${path.replace(/\//g, "_")}`;
+  const bare = o.replace(/^[a-z+]+:\/\//, "").replace(/^[^@/]*@/, "").replace(/^([^/:]+):(?!\d+\/)/, "$1/").replace(/\.git$/, "").replace(/\/+$/, "");
+  return bare.replace(/\//g, "_");
+}
+export const personalFile = (home, origin, path) => `${home}/.config/jw/projects/${personalKey(origin, path)}.toml`;
 
 // A repo that belongs to a factory workspace gets its worktrees in <workspace>/worktrees/<repo name>, wherever the person is when
 // they make one. factories: [{ ws, repos: [{ name, real }] }], `real` each repo's resolved path; main is the repo's resolved path.

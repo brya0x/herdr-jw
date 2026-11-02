@@ -1,7 +1,7 @@
 // bun jwtoml.test.js
 import assert from "node:assert/strict";
 import { readFileSync, writeFileSync, mkdtempSync, realpathSync } from "node:fs";
-import { parse, rootOf, folderOf, validFolder, setupScript, paneArgv, factoryRoot, factoriesOf, ancestorsOf } from "./jwtoml.js";
+import { parse, rootOf, folderOf, validFolder, setupScript, paneArgv, factoryRoot, factoriesOf, ancestorsOf, personalKey, personalFile } from "./jwtoml.js";
 import { spawnSync } from "node:child_process";
 const real = (p) => readFileSync(`${process.env.HOME}/ws/sales-assist/${p}/.jw.toml`, "utf8");
 
@@ -44,6 +44,15 @@ const bad = runIt({ setup: "sh -c 'exit 3'", claude: true, task: "x" });
 assert.equal(bad.status, 3); assert.ok(!bad.stdout.includes("claude"));
 assert.match(readFileSync(`${dir}/fail.log`, "utf8"), /\t3\tsh -c 'exit 3'\n$/);
 spawnSync("rm", ["-rf", dir]);
+// inline tables (the old jw wrote them in [[env]] and [layout]) are skipped, the keys around them still read
+const inline = parse('setup = ["a"]\n[[env]]\nfile = "x/.env"\nset = { A = "http://localhost:{port.x}" }\n[layout]\nsplit = "right"\na = { run = "editor" }\nratio = 0.5\n');
+assert.deepEqual(inline.copy, ["x/.env"]); assert.deepEqual(inline.setup, ["a"]);
+// jw's personal file of a repository: named by its origin (REQ-483)
+assert.equal(personalKey("https://github.com/dealerappcenter/jitsubai.git", "/x"), "github.com_dealerappcenter_jitsubai");
+assert.equal(personalKey("git@github.com:Brya0x/JW.git", "/x"), "github.com_brya0x_jw");
+assert.equal(personalKey("ssh://git@github.com/o/r", "/x"), "github.com_o_r");
+assert.equal(personalKey("", "/Users/a/b"), "local__Users_a_b");
+assert.equal(personalFile("/h", "https://github.com/o/r.git", "/x"), "/h/.config/jw/projects/github.com_o_r.toml");
 // a repo of a factory workspace gets its worktrees in <workspace>/worktrees/<name>, even when the repo is a link to a folder outside it
 // and wt.js runs from another folder (it used to fall back to <repo>-wt)
 assert.deepEqual(ancestorsOf("/a/b"), ["/a/b", "/a", "/"]);
@@ -61,6 +70,13 @@ assert.equal(factoryRoot("/code/other", [{ ws: "/ws/y", repos: [{ name: "app", r
   const realF = async (p) => { try { return realpathSync(p); } catch { return ""; } };
   const fs2 = await factoriesOf([`${T}/ws/nothing`, `${T}/ws/wsA`], readF, realF);
   assert.equal(factoryRoot(realpathSync(`${T}/ws/wsA/repos/app`), fs2), `${T}/ws/wsA/worktrees/app`);
+  // a repo with no .jw.toml but jw's personal file for its origin: its copy and setup apply (the personal layer used to be ignored)
+  sh2(`git -C ${T}/code/app remote add origin https://github.com/o/r.git && printf SECRET > ${T}/code/app/.env.local && mkdir -p ${T}/.config/jw/projects`);
+  writeFileSync(`${T}/.config/jw/projects/github.com_o_r.toml`, 'match = "x"\nsetup = ["echo built"]\ncopy = [".env.local"]\n');
+  const wt2 = spawnSync("bun", [new URL("./wt.js", import.meta.url).pathname, "feat/y", "--in", `${T}/code/app`, "--print"], { cwd: T, encoding: "utf8", env: { ...process.env, HOME: T } });
+  const made = JSON.parse(wt2.stdout);
+  assert.equal(readFileSync(`${made.folder}/.env.local`, "utf8"), "SECRET");
+  assert.ok(JSON.stringify(made.argv ?? []).includes("echo built"), "the personal setup runs");
   spawnSync("rm", ["-rf", T]);
 }
 console.log("ok");
