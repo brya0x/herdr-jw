@@ -3,11 +3,11 @@
 // jw's `jw worktree` for Herdr: the creation the Worktree mod does (main.js create()), from a terminal: same git, same .jw.toml,
 // then `herdr-app do space.new` (with the same setup wrapper, paneArgv). --in is a path or the name of a repo of the factory
 // workspace you are in; without it, the repo of the current folder. --print shows the space.new it would run instead of running it.
-import { readFileSync, existsSync, realpathSync } from "node:fs";
+import { readFileSync, existsSync, realpathSync, readdirSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import { homedir } from "node:os";
 import { dirname, resolve } from "node:path";
-import { parse, rootOf, folderOf, validFolder, setupScript, paneArgv } from "./jwtoml.js";
+import { parse, rootOf, folderOf, validFolder, setupScript, paneArgv, factoryRoot, ancestorsOf } from "./jwtoml.js";
 
 const die = (m) => { console.error(`wt: ${m}`); process.exit(1); };
 const run = (cmd, args, cwd) => { const r = spawnSync(cmd, args, { cwd, encoding: "utf8" }); return { ok: r.status === 0, out: (r.stdout ?? "").trim(), err: (r.stderr ?? "").trim() }; };
@@ -21,6 +21,21 @@ function factory(from) {
   }
 }
 const repoPath = (f, r) => r.kind === "dir" && r.path ? r.path : [`${f.ws}/repos/${r.name}`, `${f.ws}/${r.name}`].find(existsSync);
+
+// the factory workspaces that may own a repo: around the places we are in, and every ~/ws/* (where "new workspace" makes them)
+function factoriesFor(places) {
+  const dirs = new Set(places.flatMap(ancestorsOf));
+  const wsDir = `${homedir()}/ws`;
+  if (existsSync(wsDir)) for (const e of readdirSync(wsDir)) dirs.add(`${wsDir}/${e}`);
+  const out = [];
+  for (const ws of dirs) {
+    if (!existsSync(`${ws}/.factory.json`)) continue;
+    let json; try { json = JSON.parse(readFileSync(`${ws}/.factory.json`, "utf8")); } catch { continue; }
+    const repos = (json.repos ?? []).map((r) => { try { return { name: r.name, real: realpathSync(repoPath({ ws }, r)) }; } catch { return null; } }).filter(Boolean);
+    out.push({ ws, repos });
+  }
+  return out;
+}
 
 export function plan(argv, cwd = process.cwd()) {
   const o = { _: [] };
@@ -50,7 +65,8 @@ export function plan(argv, cwd = process.cwd()) {
   const main = git(top.out, "worktree", "list", "--porcelain").out.split("\n")[0].replace(/^worktree /, "");
   if (!name && fac) name = fac.repos.find((r) => { const p = repoPath(fac, r); return p && realpathSync(p) === realpathSync(main); })?.name ?? null;
   const cfg = parse(existsSync(`${main}/.jw.toml`) ? readFileSync(`${main}/.jw.toml`, "utf8") : "");
-  const dest = `${name && fac ? `${fac.ws}/worktrees/${name}` : rootOf(cfg, main, homedir())}/${folder}`;
+  const owned = name && fac ? `${fac.ws}/worktrees/${name}` : factoryRoot(realpathSync(main), factoriesFor([cwd, start])); // by where we are, else by the repo
+  const dest = `${owned ?? rootOf(cfg, main, homedir())}/${folder}`;
   if (existsSync(dest)) die(`ya existe ${dest}`);
   return { o, branch, folder, top: top.out, main, cfg, dest, exists: git(main, "show-ref", "--verify", "--quiet", `refs/heads/${branch}`).ok };
 }

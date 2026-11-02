@@ -4,7 +4,7 @@
 import { View, div } from "gpui-kit";
 import { v_flex, h_flex, InputState, Input, Scrollbar } from "gpui-base";
 import { run, props, openOverlay, closeOverlay, theme, spaces, panes, exec, home, appHome, readTextFile, notify } from "herdr";
-import { parse as parseJw, rootOf, folderOf, validFolder, setupScript, paneArgv } from "./jwtoml.js";
+import { parse as parseJw, rootOf, folderOf, validFolder, setupScript, paneArgv, factoryRoot, factoriesOf, ancestorsOf } from "./jwtoml.js";
 
 // Where a space is now: its first terminal's live folder, else where it was made.
 function place(s) {
@@ -155,6 +155,7 @@ export default class Worktree extends View {
         if (repo && !this.opening && props().action !== "remove") {
           try { this.cfg = parseJw((await readTextFile(`${repo.main}/.jw.toml`, { on: this.on })) ?? ""); this.openMode = this.cfg.open; }
           catch (e) { this.cfgError = String(e?.message ?? e); }
+          this.root = props()?.root || (await this.factoryRoot(repo.main)) || null; // the repo of a factory workspace: its worktrees folder
         }
         if (repo && this.opening) this.list = await checkouts(repo, this.on);
         this.repo = repo;
@@ -162,6 +163,16 @@ export default class Worktree extends View {
         if (props().branch) await this.work(cx);
       } catch (error) { this.repo = null; this.error = String(error); cx.notify(); }
     });
+  }
+
+  // The factory workspace that lists `main` among its repos (their folders may be links to repos elsewhere), found from where the
+  // dialog was opened and from every ~/ws/*: <workspace>/worktrees/<repo name>, or null.
+  async factoryRoot(main) {
+    if (this.on) return null;
+    const real = async (p) => (await exec("sh", ["-c", 'cd "$1" 2>/dev/null && pwd -P', "sh", p])).stdout.trim();
+    const dirs = new Set([this.folder, props()?.folder].filter(Boolean).flatMap(ancestorsOf));
+    for (const e of (await exec("ls", [`${this.userHome}/ws`])).stdout.split("\n").filter(Boolean)) dirs.add(`${this.userHome}/ws/${e}`);
+    return factoryRoot(await real(main) || main, await factoriesOf(dirs, (p) => readTextFile(p), real));
   }
 
   space() {
@@ -198,7 +209,7 @@ export default class Worktree extends View {
     if (branch.startsWith("-") || !(await git(this.repo.top, ["check-ref-format", "--branch", branch], this.on)).ok) return `«${branch}» no es un nombre de rama válido.`;
     const folder = folderOf(branch);
     if (!validFolder(folder)) return `«${folder}» no sirve de nombre de carpeta (una sola pieza, hasta 80 letras, sin / ni \\).`;
-    const dest = `${props()?.root || rootOf(this.cfg, this.repo.main, this.userHome)}/${folder}`;
+    const dest = `${this.root || rootOf(this.cfg, this.repo.main, this.userHome)}/${folder}`;
     if ((await exec("sh", ["-c", '[ -e "$1" ] || [ -L "$1" ]', "sh", dest], { on: this.on })).code === 0) return `Ya existe ${tilde(dest, this.userHome)}.`;
     const exists = (await git(this.repo.main, ["show-ref", "--verify", "--quiet", `refs/heads/${branch}`], this.on)).ok;
     // an existing branch is checked out as it is; a new one starts from HEAD, as in jw
@@ -350,7 +361,7 @@ export default class Worktree extends View {
             ? !r.linked
               ? "This is the repository's main checkout, not a worktree."
               : `Closes the space and deletes ${tilde(r.top, this.userHome)}. The branch stays.`
-            : `Un space nuevo en ${tilde(props()?.root || rootOf(this.cfg ?? { root: "" }, r.main, this.userHome), this.userHome)}/<carpeta>. Una rama que existe se usa tal cual; una nueva parte de HEAD. La carpeta es el último segmento del nombre.`;
+            : `Un space nuevo en ${tilde(this.root || rootOf(this.cfg ?? { root: "" }, r.main, this.userHome), this.userHome)}/<carpeta>. Una rama que existe se usa tal cual; una nueva parte de HEAD. La carpeta es el último segmento del nombre.`;
     const blocked = !r || (remove && !r.linked);
     return v_flex()
       .id("worktree")

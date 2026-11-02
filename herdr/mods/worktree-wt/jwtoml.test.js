@@ -1,7 +1,7 @@
 // bun jwtoml.test.js
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
-import { parse, rootOf, folderOf, validFolder, setupScript, paneArgv } from "./jwtoml.js";
+import { readFileSync, writeFileSync, mkdtempSync, realpathSync } from "node:fs";
+import { parse, rootOf, folderOf, validFolder, setupScript, paneArgv, factoryRoot, factoriesOf, ancestorsOf } from "./jwtoml.js";
 import { spawnSync } from "node:child_process";
 const real = (p) => readFileSync(`${process.env.HOME}/ws/sales-assist/${p}/.jw.toml`, "utf8");
 
@@ -44,4 +44,23 @@ const bad = runIt({ setup: "sh -c 'exit 3'", claude: true, task: "x" });
 assert.equal(bad.status, 3); assert.ok(!bad.stdout.includes("claude"));
 assert.match(readFileSync(`${dir}/fail.log`, "utf8"), /\t3\tsh -c 'exit 3'\n$/);
 spawnSync("rm", ["-rf", dir]);
+// a repo of a factory workspace gets its worktrees in <workspace>/worktrees/<name>, even when the repo is a link to a folder outside it
+// and wt.js runs from another folder (it used to fall back to <repo>-wt)
+assert.deepEqual(ancestorsOf("/a/b"), ["/a/b", "/a", "/"]);
+assert.equal(factoryRoot("/code/app", [{ ws: "/ws/x", repos: [{ name: "api", real: "/code/api" }] }, { ws: "/ws/y", repos: [{ name: "app", real: "/code/app" }] }]), "/ws/y/worktrees/app");
+assert.equal(factoryRoot("/code/other", [{ ws: "/ws/y", repos: [{ name: "app", real: "/code/app" }] }]), null);
+{
+  const T = realpathSync(mkdtempSync(`${process.env.TMPDIR ?? "/tmp"}/wt-fac-`));
+  const sh2 = (c) => spawnSync("sh", ["-c", c], { encoding: "utf8" });
+  sh2(`mkdir -p ${T}/code/app ${T}/ws/wsA/worktrees ${T}/ws/wsA/repos && git -C ${T}/code/app init -q && git -C ${T}/code/app -c user.email=a@b -c user.name=t commit -q --allow-empty -m i && ln -s ${T}/code/app ${T}/ws/wsA/repos/app`);
+  writeFileSync(`${T}/ws/wsA/.factory.json`, JSON.stringify({ repos: [{ kind: "dir", name: "app", path: `${T}/code/app` }] }));
+  const wt = spawnSync("bun", [new URL("./wt.js", import.meta.url).pathname, "feat/x", "--in", `${T}/code/app`, "--print"], { cwd: T, encoding: "utf8", env: { ...process.env, HOME: T } });
+  assert.equal(JSON.parse(wt.stdout).folder, `${T}/ws/wsA/worktrees/app/x`);
+  // the dialog's way: the same lookup through its own read and real, with the repo reached through the workspace's link
+  const readF = async (p) => readFileSync(p, "utf8");
+  const realF = async (p) => { try { return realpathSync(p); } catch { return ""; } };
+  const fs2 = await factoriesOf([`${T}/ws/nothing`, `${T}/ws/wsA`], readF, realF);
+  assert.equal(factoryRoot(realpathSync(`${T}/ws/wsA/repos/app`), fs2), `${T}/ws/wsA/worktrees/app`);
+  spawnSync("rm", ["-rf", T]);
+}
 console.log("ok");

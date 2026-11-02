@@ -86,7 +86,7 @@ bun herdr/mods/worktree-wt/wt.js <rama> [--in <repo>] [--branch b] [--from ref] 
 ```
 
 Los repos de un workspace van a `<workspace>/worktrees/<repo>/<carpeta>`; los demás, a `<repo>-wt/` según
-`.jw.toml`.
+`.jw.toml`. El workspace se reconoce por el repo (aunque su carpeta en `repos/` sea un enlace a otro sitio) y no por la carpeta desde la que se lanza.
 
 ### Tareas con bucle (`herdr/mods/factory-tasks` + `claude/skills/herdr-tasks`)
 

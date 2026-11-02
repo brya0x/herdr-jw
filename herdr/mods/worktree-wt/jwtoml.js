@@ -108,6 +108,31 @@ export function rootOf(cfg, main, home) {
   return clean(r.startsWith("/") ? r : `${main}/${r}`);
 }
 
+// A repo that belongs to a factory workspace gets its worktrees in <workspace>/worktrees/<repo name>, wherever the person is when
+// they make one. factories: [{ ws, repos: [{ name, real }] }], `real` each repo's resolved path; main is the repo's resolved path.
+export const factoryRoot = (main, factories) => {
+  for (const f of factories) { const r = f.repos.find((x) => x.real === main); if (r) return `${f.ws}/worktrees/${r.name}`; }
+  return null;
+};
+// The factory workspaces found in `dirs`, with each repo's resolved path. `read(path)` gives a file's text (or null/throws), `real(path)`
+// the resolved path of a folder (or "" when it is not there): the caller's own way to read files, so the dialog and a test share this.
+export async function factoriesOf(dirs, read, real) {
+  const out = [];
+  for (const ws of dirs) {
+    let json; try { json = JSON.parse((await read(`${ws}/.factory.json`)) ?? "null"); } catch { continue; }
+    if (!json) continue;
+    const repos = [];
+    for (const r of json.repos ?? []) {
+      const rp = await real(r.kind === "dir" && r.path ? r.path : `${ws}/repos/${r.name}`);
+      if (rp) repos.push({ name: r.name, real: rp });
+    }
+    out.push({ ws, repos });
+  }
+  return out;
+}
+// a folder and every folder above it: where a .factory.json may be
+export const ancestorsOf = (p) => { const out = []; for (let d = p; ; d = d.slice(0, d.lastIndexOf("/")) || "/") { out.push(d); if (d === "/") return out; } };
+
 // jw's rule for the folder of a worktree: one piece, no . or .., no / \ or control characters, up to 80.
 export const folderOf = (branch) => branch.split("/").pop();
 export const validFolder = (f) => f.length > 0 && f.length <= 80 && f !== "." && f !== ".." && !/[\/\\\u0000-\u001f]/.test(f);
