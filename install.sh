@@ -2,11 +2,15 @@
 # Install herdr-jw into Herdr (and update it: run it again):
 #   curl -fsSL https://raw.githubusercontent.com/brya0x/herdr-jw/main/install.sh | sh
 #   curl -fsSL .../install.sh | sh -s -- --no-keys     leave keys.json alone
+#   curl -fsSL .../install.sh | sh -s -- --no-plugin   do not install the jw plugin for Claude Code
 # HERDR_JW_REF=<branch|tag> picks the version; HERDR_JW_URL replaces the tarball URL (tests).
 set -eu
 H=${HERDR_APP_HOME:-$HOME/.config/herdr-app}
 URL=${HERDR_JW_URL:-https://github.com/brya0x/herdr-jw/archive/${HERDR_JW_REF:-main}.tar.gz}
-KEYS=1; [ "${1:-}" = --no-keys ] && KEYS=0
+KEYS=1; PLUGIN=1
+for a in "$@"; do
+  case $a in --no-keys) KEYS=0 ;; --no-plugin) PLUGIN=0 ;; *) echo "herdr-jw: unknown option $a" >&2; exit 1 ;; esac
+done
 die() { echo "herdr-jw: $*" >&2; exit 1; }
 
 for c in curl tar rsync python3; do command -v "$c" >/dev/null || die "needs $c"; done
@@ -38,6 +42,18 @@ else:
     json.dump(out, open(path, "w"), indent=2, ensure_ascii=False)
     print(f"herdr-jw: keys.json updated (backup: {bak})")
 PY
+fi
+
+# The jw plugin for Claude Code (jw:tasks): added from this repo's marketplace; running again updates it.
+if [ "$PLUGIN" = 1 ]; then
+  if command -v claude >/dev/null; then
+    { claude plugin marketplace add brya0x/herdr-jw && claude plugin marketplace update herdr-jw \
+      && { claude plugin install jw@herdr-jw && claude plugin update jw@herdr-jw; }; } >/dev/null 2>&1 \
+      && echo "herdr-jw: Claude Code plugin jw@herdr-jw is installed (open sessions: /reload-plugins)" \
+      || echo "herdr-jw: could not install the Claude Code plugin; run: claude plugin marketplace add brya0x/herdr-jw && claude plugin install jw@herdr-jw" >&2
+  else
+    echo "herdr-jw: Claude Code (claude) not found, plugin skipped"
+  fi
 fi
 
 echo "herdr-jw: restart Herdr, then turn the layout on with:"

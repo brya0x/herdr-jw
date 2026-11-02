@@ -28,6 +28,7 @@ copia mods, layout, temas y el skill `herdr-tasks` a `~/.config/herdr-app`. Tamb
 atajos de abajo y quita los `tab.*`; si cambia algo deja una copia `keys.json.bak-<fecha>`.
 
 - `| sh -s -- --no-keys` no toca `keys.json`.
+- `| sh -s -- --no-plugin` no instala el plugin `jw` de Claude Code (si hay `claude`, lo añade desde el marketplace de este repo; volver a correrlo lo actualiza).
 - `HERDR_JW_REF=<rama|tag>` elige la versión. Volver a correrlo actualiza.
 - Reinicia Herdr y activa el layout: `herdr-app do layout.switch '{"name":"jw"}'` (el script no lo cambia solo).
 
@@ -94,6 +95,8 @@ Skills de Claude Code para las sesiones de jw, con el prefijo `jw:`. Hoy solo `j
 claude plugin marketplace add brya0x/herdr-jw
 claude plugin install jw@herdr-jw
 ```
+
+`install.sh` ya hace esto; las sesiones abiertas lo cargan con `/reload-plugins`.
 
 ### Temas para Herdr y Claude Code (`themes/` + `mods/themes-jw`)
 
