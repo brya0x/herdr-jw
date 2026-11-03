@@ -1,7 +1,7 @@
 // bun jwtoml.test.js
 import assert from "node:assert/strict";
 import { readFileSync, writeFileSync, mkdtempSync, realpathSync } from "node:fs";
-import { parse, rootOf, folderOf, validFolder, setupScript, paneArgv, factoryRoot, factoriesOf, ancestorsOf, personalKey, personalFile } from "./jwtoml.js";
+import { parse, rootOf, folderOf, validFolder, setupScript, paneArgv, factoryRoot, factoriesOf, ancestorsOf, personalKey, personalFile, claimSlot, jwEnv } from "./jwtoml.js";
 import { spawnSync } from "node:child_process";
 const real = (p) => readFileSync(`${process.env.HOME}/ws/sales-assist/${p}/.jw.toml`, "utf8");
 
@@ -80,3 +80,14 @@ assert.equal(factoryRoot("/code/other", [{ ws: "/ws/y", repos: [{ name: "app", r
   spawnSync("rm", ["-rf", T]);
 }
 console.log("ok");
+
+// ports: jw's rules, the inline form, the lowest free slot, the block, the variables
+assert.deepEqual(parse('ports = { web = 0, db_main = 99 }\nsetup = ["a"]').ports, { web: 0, db_main: 99 });
+for (const [t, re] of [["Web = 1", /names "Web"/], ["base = 1", /`base`/], ["web = 100", /ports\.web must be/], ["web = 1.5", /ports\.web must be/], ['web = "1"', /ports\.web must be/]]) assert.throws(() => parse(`[ports]\n${t}\n`), re);
+const alive = new Set(["/a", "/c"]), isAlive = (p) => alive.has(p);
+assert.deepEqual(claimSlot({}, "/a", isAlive), { reg: { "/a": 0 }, slot: 0 });
+assert.deepEqual(claimSlot({ "/a": 0, "/gone": 1, "/c": 2 }, "/n", isAlive), { reg: { "/a": 0, "/c": 2, "/n": 1 }, slot: 1 }, "a hole is filled first, a path that is gone gives its slot back");
+assert.equal(claimSlot(Object.fromEntries(Array.from({ length: 455 }, (_, i) => [`/p${i}`, i])), "/n", () => true).slot, null, "the block of slot 455 would pass port 65535");
+assert.deepEqual(jwEnv({ ports: { web: 0, api_x: 7 } }, "/w/f", 3), { JW_WORKSPACE_DIR: "/w/f", JW_NAME: "f", JW_PORT_BASE: "20300", JW_PORT_WEB: "20300", JW_PORT_API_X: "20307" });
+assert.deepEqual(jwEnv({ ports: { web: 0 } }, "/w/f", null), { JW_WORKSPACE_DIR: "/w/f", JW_NAME: "f" });
+assert.match(paneArgv({ setup: "", claude: false, task: "", log: "/l", env: { JW_NAME: "it's" } })[2], /^export JW_NAME='it'\\''s'; exec /);

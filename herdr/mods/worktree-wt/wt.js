@@ -4,11 +4,11 @@
 // then `herdr-app do space.new` (with the same setup wrapper, paneArgv). --in is a path or the name of a repo of the factory
 // workspace you are in; without it, the repo of the current folder. Inside a workspace, a path to a repo that belongs to no workspace
 // (a loose checkout of a repo the workspace already has) is refused unless --loose. --print shows the space.new it would run instead of running it.
-import { readFileSync, existsSync, realpathSync, readdirSync } from "node:fs";
+import { readFileSync, writeFileSync, mkdirSync, existsSync, realpathSync, readdirSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import { homedir } from "node:os";
 import { dirname, resolve } from "node:path";
-import { parse, rootOf, folderOf, validFolder, setupScript, paneArgv, factoryRoot, ancestorsOf, personalFile } from "./jwtoml.js";
+import { parse, rootOf, folderOf, validFolder, setupScript, paneArgv, factoryRoot, ancestorsOf, personalFile, slotsFile, claimSlot, jwEnv } from "./jwtoml.js";
 
 const die = (m) => { console.error(`wt: ${m}`); process.exit(1); };
 const run = (cmd, args, cwd) => { const r = spawnSync(cmd, args, { cwd, encoding: "utf8" }); return { ok: r.status === 0, out: (r.stdout ?? "").trim(), err: (r.stderr ?? "").trim() }; };
@@ -79,6 +79,15 @@ export function plan(argv, cwd = process.cwd()) {
 
 export function create(p) {
   const { o, branch, folder, top, main, cfg, dest } = p;
+  const home = process.env.HERDR_APP_HOME ?? `${homedir()}/.config/herdr-app`;
+  let slot = null;
+  if (Object.keys(cfg.ports).length) { // the block of ports is taken before anything is made, as jw does
+    const file = slotsFile(home);
+    let reg = {}; try { reg = JSON.parse(readFileSync(file, "utf8")); } catch {}
+    ({ reg, slot } = claimSlot(reg, dest, existsSync));
+    if (slot === null) die("no block of ports is free");
+    mkdirSync(dirname(file), { recursive: true }); writeFileSync(file, JSON.stringify(reg));
+  }
   // an existing branch is checked out as it is; a new one starts from --from, else HEAD, as in jw
   const r = git(top, ...(p.exists ? ["worktree", "add", dest, branch] : ["worktree", "add", "-b", branch, dest, o.from ?? "HEAD"]));
   if (!r.ok) die(r.err || "git worktree add failed");
@@ -87,10 +96,9 @@ export function create(p) {
     run("sh", ["-c", 'mkdir -p "$(dirname "$2/$3")" && cp -R "$1/$3" "$2/$3"', "sh", main, dest, rel]);
   }
   const task = (o.task ?? "").trim();
-  const home = process.env.HERDR_APP_HOME ?? `${homedir()}/.config/herdr-app`;
   const setup = setupScript(cfg, folder, branch);
-  const argv = paneArgv({ setup, claude: (o.open ?? cfg.open) === "claude" || Boolean(task), task, log: `${home}/data/factory/setup-failures.log` });
-  return { folder: dest, ...(argv ? { argv } : {}), ...(task && !setup ? { task } : {}) };
+  const argv = paneArgv({ setup, claude: (o.open ?? cfg.open) === "claude" || Boolean(task), task, log: `${home}/data/factory/setup-failures.log`, env: jwEnv(cfg, dest, slot) });
+  return { folder: dest, argv };
 }
 
 if (import.meta.main) {

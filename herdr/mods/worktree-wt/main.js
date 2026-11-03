@@ -3,8 +3,8 @@
 
 import { View, div } from "gpui-kit";
 import { v_flex, h_flex, InputState, Input, Scrollbar } from "gpui-base";
-import { run, props, openOverlay, closeOverlay, theme, spaces, panes, exec, home, appHome, readTextFile, notify } from "herdr";
-import { parse as parseJw, rootOf, folderOf, validFolder, setupScript, paneArgv, factoryRoot, factoriesOf, ancestorsOf, personalFile } from "./jwtoml.js";
+import { run, props, openOverlay, closeOverlay, theme, spaces, panes, exec, home, appHome, readTextFile, writeTextFile, notify } from "herdr";
+import { parse as parseJw, rootOf, folderOf, validFolder, setupScript, paneArgv, factoryRoot, factoriesOf, ancestorsOf, personalFile, slotsFile, claimSlot, jwEnv } from "./jwtoml.js";
 
 // Where a space is now: its first terminal's live folder, else where it was made.
 function place(s) {
@@ -219,6 +219,17 @@ export default class Worktree extends View {
     if (!validFolder(folder)) return `"${folder}" is not usable as a folder name (one piece, up to 80 characters, no / or \\).`;
     const dest = `${this.root || rootOf(this.cfg, this.repo.main, this.userHome)}/${folder}`;
     if ((await exec("sh", ["-c", '[ -e "$1" ] || [ -L "$1" ]', "sh", dest], { on: this.on })).code === 0) return `${tilde(dest, this.userHome)} already exists.`;
+    let slot = null;
+    // shortcut: ports only for a local worktree (the registry is on this machine); a remote one gets JW_WORKSPACE_DIR and JW_NAME only.
+    if (!this.on && Object.keys(this.cfg.ports).length) { // the block of ports is taken before anything is made, as jw does
+      const file = slotsFile(appHome());
+      let reg = {}; try { reg = JSON.parse((await readTextFile(file)) ?? "{}"); } catch {}
+      const gone = (await exec("sh", ["-c", 'for p; do [ -e "$p" ] || echo "$p"; done', "sh", ...Object.keys(reg)])).stdout.split("\n");
+      ({ reg, slot } = claimSlot(reg, dest, (q) => !gone.includes(q)));
+      if (slot === null) return "No block of ports is free.";
+      await exec("mkdir", ["-p", file.slice(0, file.lastIndexOf("/"))]);
+      await writeTextFile(file, JSON.stringify(reg), null);
+    }
     const exists = (await git(this.repo.main, ["show-ref", "--verify", "--quiet", `refs/heads/${branch}`], this.on)).ok;
     // an existing branch is checked out as it is; a new one starts from HEAD, as in jw
     const r = await git(this.repo.top, exists ? ["worktree", "add", dest, branch] : ["worktree", "add", "-b", branch, dest, "HEAD"], this.on);
@@ -232,10 +243,10 @@ export default class Worktree extends View {
     const task = this.task.trim();
     const claude = this.openMode === "claude" || Boolean(task);
     const setup = setupScript(this.cfg, folder, branch);
-    const argv = paneArgv({ setup, claude, task, log: `${appHome()}/data/factory/setup-failures.log` });
+    const argv = paneArgv({ setup, claude, task, log: `${appHome()}/data/factory/setup-failures.log`, env: jwEnv(this.cfg, dest, slot) });
     const p = props();
     // Leave spaces unnamed so they follow the checkout folder and nest under the repo.
-    run("space.new", { folder: dest, machine: this.on, tab: p.tab, argv: p.argv ?? argv, ...(task && !setup ? { task } : {}) });
+    run("space.new", { folder: dest, machine: this.on, tab: p.tab, argv: p.argv ?? argv });
     return "";
   }
 
