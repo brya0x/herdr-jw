@@ -1,8 +1,9 @@
 #!/usr/bin/env bun
-// bun wt.js <name> [--in <repo>] [--branch <branch>] [--from <ref>] [--open shell|claude] [--task <text>] [--print]
+// bun wt.js <name> [--in <repo>] [--branch <branch>] [--from <ref>] [--open shell|claude] [--task <text>] [--loose] [--print]
 // jw's `jw worktree` for Herdr: the creation the Worktree mod does (main.js create()), from a terminal: same git, same .jw.toml,
 // then `herdr-app do space.new` (with the same setup wrapper, paneArgv). --in is a path or the name of a repo of the factory
-// workspace you are in; without it, the repo of the current folder. --print shows the space.new it would run instead of running it.
+// workspace you are in; without it, the repo of the current folder. Inside a workspace, a path to a repo that belongs to no workspace
+// (a loose checkout of a repo the workspace already has) is refused unless --loose. --print shows the space.new it would run instead of running it.
 import { readFileSync, existsSync, realpathSync, readdirSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import { homedir } from "node:os";
@@ -42,11 +43,12 @@ export function plan(argv, cwd = process.cwd()) {
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === "--print") o.print = true;
+    else if (a === "--loose") o.loose = true;
     else if (["--in", "--branch", "--from", "--open", "--task"].includes(a)) o[a.slice(2)] = argv[++i] ?? die(`${a} needs a value`);
     else if (a.startsWith("--")) die(`unknown option: ${a}`);
     else o._.push(a);
   }
-  if (o._.length !== 1) die("usage: wt.js <name> [--in <repo>] [--branch <branch>] [--from <ref>] [--open shell|claude] [--task <text>] [--print]");
+  if (o._.length !== 1) die("usage: wt.js <name> [--in <repo>] [--branch <branch>] [--from <ref>] [--open shell|claude] [--task <text>] [--loose] [--print]");
   if (o.open && !["shell", "claude"].includes(o.open)) die("--open: shell or claude");
   const branch = o.branch ?? o._[0], folder = o.branch ? o._[0] : folderOf(branch);
   if (branch.startsWith("-") || !git(cwd, "check-ref-format", "--branch", branch).ok) die(`"${branch}" is not a valid branch name`);
@@ -69,6 +71,7 @@ export function plan(argv, cwd = process.cwd()) {
   const file = [`${main}/.jw.toml`, personalFile(homedir(), origin.ok ? origin.out : "", main)].find(existsSync);
   let cfg; try { cfg = parse(file ? readFileSync(file, "utf8") : ""); } catch (e) { die(`${file}: ${e.message}`); }
   const owned = name && fac ? `${fac.ws}/worktrees/${name}` : factoryRoot(realpathSync(main), factoriesFor([cwd, start])); // by where we are, else by the repo
+  if (fac && o.in && !owned && !o.loose) die(`${o.in} is not a repo of the workspace ${fac.ws}: its worktree would not be grouped under it. Use --in ${fac.repos.map((r) => r.name).join("|") || "<repo name>"} (or ${fac.ws}/repos/<name>), or pass --loose to make a worktree of ${main} anyway`);
   const dest = `${owned ?? rootOf(cfg, main, homedir())}/${folder}`;
   if (existsSync(dest)) die(`${dest} already exists`);
   return { o, branch, folder, top: top.out, main, cfg, dest, exists: git(main, "show-ref", "--verify", "--quiet", `refs/heads/${branch}`).ok };
