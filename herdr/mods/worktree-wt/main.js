@@ -246,7 +246,7 @@ export default class Worktree extends View {
     const argv = paneArgv({ setup, claude, task, log: `${appHome()}/data/factory/setup-failures.log`, env: jwEnv(this.cfg, dest, slot) });
     const p = props();
     // Leave spaces unnamed so they follow the checkout folder and nest under the repo.
-    run("space.new", { folder: dest, machine: this.on, tab: p.tab, argv: p.argv ?? argv });
+    run("space.new", { folder: dest, machine: this.on, tab: p.tab, argv: p.argv ?? argv, ...(p.argv && task && !setup ? { task } : {}) }); // a caller's own argv gets the task as before
     return "";
   }
 
