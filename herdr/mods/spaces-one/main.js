@@ -5,6 +5,7 @@
 
 import { View, div, svg } from "gpui-kit";
 import { v_flex, h_flex } from "gpui-base";
+import { reposOf } from "./manifest.js";
 import { spaces, machines, panes, nextCommand, run, openOverlay, exec, hc, theme, shared, setShared, watchFolder, readTextFile, window, layout } from "herdr";
 
 function find(node, id) {
@@ -63,7 +64,7 @@ export default class Spaces extends View {
     this.over = null;
     this.machines = [];
     this.folded = new Set(JSON.parse(localStorage.getItem("machines.folded") ?? "[]"));
-    this.repos = {}; // factory space folder -> the .git folders of the repos in its .factory.json
+    this.repos = {}; // factory space folder -> the .git folders of the repos in its .factory.toml
     this.loadRepos(cx);
     // keys.json: "cmd-]": "spaces-one.next", "cmd-[": "spaces-one.prev" walk the sidebar's order (worktrees under their repo), not the raw one space.next uses.
     cx.spawn(async () => {
@@ -88,8 +89,8 @@ export default class Spaces extends View {
     cx.spawn(async (cx) => {
       for (const folder of folders) {
         try {
-          const m = JSON.parse((await readTextFile(`${folder}/.factory.json`)) ?? "null");
-          const git = new Set((m?.repos ?? []).map((r) => `${r.kind === "dir" ? r.path : `${folder}/repos/${r.name}`}/.git`));
+          const repos = reposOf(await readTextFile(`${folder}/.factory.toml`), await readTextFile(`${folder}/.factory.json`));
+          const git = new Set((repos ?? []).map((r) => `${r.kind === "dir" ? r.path : `${folder}/repos/${r.name}`}/.git`));
           if (git.size && [...git].join() !== [...(this.repos[folder] ?? [])].join()) { this.repos[folder] = git; cx.notify(); }
         } catch { /* no manifest: an ordinary space */ }
       }

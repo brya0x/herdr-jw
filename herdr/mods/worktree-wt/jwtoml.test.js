@@ -92,10 +92,10 @@ assert.deepEqual(jwEnv({ ports: { web: 0, api_x: 7 } }, "/w/f", 3), { JW_WORKSPA
 assert.deepEqual(jwEnv({ ports: { web: 0 } }, "/w/f", null), { JW_WORKSPACE_DIR: "/w/f", JW_NAME: "f" });
 assert.match(paneArgv({ setup: "", claude: false, task: "", log: "/l", env: { JW_NAME: "it's" } })[2], /^export JW_NAME='it'\\''s'; exec /);
 
-// the ports of a repo in .factory.json: read with the workspace, found by the repo's path, replace the .jw.toml's
-const fs2 = await factoriesOf(["/ws/y"], async (p) => (p === "/ws/y/.factory.json" ? JSON.stringify({ repos: [{ kind: "dir", name: "app", path: "/code/app", ports: { web: 2 } }, { kind: "dir", name: "api", path: "/code/api" }] }) : null), async (p) => p);
+// the ports of a repo in .factory.toml: read with the workspace, found by the repo's path, replace the .jw.toml's
+const fs2 = await factoriesOf(["/ws/y"], async (p) => (p === "/ws/y/.factory.toml" ? '[repos.app]\nkind = "dir"\npath = "/code/app"\n[repos.app.ports]\nweb = 2\n[repos.api]\nkind = "dir"\npath = "/code/api"\n' : null), async (p) => p);
 assert.deepEqual(factoryRepo("/code/app", fs2), { name: "app", real: "/code/app", ports: { web: 2 }, ws: "/ws/y", root: "/ws/y/worktrees/app" });
 assert.equal(factoryRepo("/code/api", fs2).ports, undefined); assert.equal(factoryRepo("/code/none", fs2), null);
 assert.deepEqual(withFactoryPorts({ ports: { a: 1 }, setup: [] }, factoryRepo("/code/app", fs2)), { ports: { web: 2 }, setup: [] });
 assert.deepEqual(withFactoryPorts({ ports: { a: 1 } }, factoryRepo("/code/api", fs2)), { ports: { a: 1 } }, "no ports there: the .jw.toml's stay");
-assert.throws(() => withFactoryPorts({ ports: {} }, { ports: { base: 1 } }), /\.factory\.json: ports cannot name/);
+assert.throws(() => withFactoryPorts({ ports: {} }, { ports: { base: 1 } }), /\.factory\.toml: ports cannot name/);

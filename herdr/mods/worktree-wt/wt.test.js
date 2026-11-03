@@ -43,14 +43,15 @@ assert.equal(make("three").env.JW_PORT_BASE, "20000"); // the slot of a worktree
 writeFileSync(`${proj}/.jw.toml`, 'root = "../proj-wt"\n');
 assert.deepEqual(make("four").env, { JW_WORKSPACE_DIR: `${root}/proj-wt/four`, JW_NAME: "four" });
 for (const n of ["two", "three", "four"]) spawnSync("git", ["worktree", "remove", "--force", `${root}/proj-wt/${n}`], { cwd: proj });
-// a repo of a factory workspace may carry its own ports in .factory.json: they replace the .jw.toml's [ports] (no merge)
+// a repo of a factory workspace may carry its own ports in .factory.toml: they replace the .jw.toml's [ports] (no merge)
 writeFileSync(`${ws}/repos/app/.jw.toml`, "[ports]\nweb = 0\nmetro = 81\n");
-writeFileSync(`${ws}/.factory.json`, JSON.stringify({ repos: [{ kind: "gh", id: "o/app", name: "app", ports: { web: 1, api: 5 } }] }));
+// (the first part of this test read the old .factory.json; the .factory.toml wins once there is one)
+writeFileSync(`${ws}/.factory.toml`, '# my workspace\n[repos.app]\nkind = "gh"\nid = "o/app"\n\n[repos.app.ports]\nweb = 1\napi = 5\n');
 const f = make("fac", ws, "--in", "app");
 assert.deepEqual(f.env, { JW_WORKSPACE_DIR: `${ws}/worktrees/app/fac`, JW_NAME: "fac", JW_PORT_BASE: "20000", JW_PORT_WEB: "20001", JW_PORT_API: "20005" });
 spawnSync("git", ["worktree", "remove", "--force", `${ws}/worktrees/app/fac`], { cwd: `${ws}/repos/app` });
 // bad ports there are refused as in a .jw.toml
-writeFileSync(`${ws}/.factory.json`, JSON.stringify({ repos: [{ kind: "gh", id: "o/app", name: "app", ports: { web: 100 } }] }));
+writeFileSync(`${ws}/.factory.toml`, '[repos.app]\nkind = "gh"\n[repos.app.ports]\nweb = 100\n');
 r = spawnSync("bun", ["-e", 'const { plan } = await import(process.argv[1]); plan(["bad", "--in", "app"], process.argv[2])', new URL("./wt.js", import.meta.url).pathname, ws], { encoding: "utf8" });
-assert.notEqual(r.status, 0); assert.match(r.stderr, /\.factory\.json: ports\.web must be/);
+assert.notEqual(r.status, 0); assert.match(r.stderr, /\.factory\.toml: ports\.web must be/);
 console.log("ok");

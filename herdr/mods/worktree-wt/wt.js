@@ -8,16 +8,21 @@ import { readFileSync, writeFileSync, mkdirSync, existsSync, realpathSync, readd
 import { spawnSync } from "node:child_process";
 import { homedir } from "node:os";
 import { dirname, resolve } from "node:path";
+import { reposOf } from "./manifest.js";
 import { parse, rootOf, folderOf, validFolder, setupScript, paneArgv, factoryRepo, withFactoryPorts, ancestorsOf, personalFile, slotsFile, claimSlot, jwEnv } from "./jwtoml.js";
 
 const die = (m) => { console.error(`wt: ${m}`); process.exit(1); };
 const run = (cmd, args, cwd) => { const r = spawnSync(cmd, args, { cwd, encoding: "utf8" }); return { ok: r.status === 0, out: (r.stdout ?? "").trim(), err: (r.stderr ?? "").trim() }; };
 const git = (cwd, ...args) => run("git", args, cwd);
 
-// the factory workspace around a folder (the nearest .factory.json upward) and where its repos are
+// the repos of the workspace in a folder (its .factory.toml, else the old .factory.json), or null when it is not one; throws if it is invalid
+const manifest = (d) => { const r = (f) => { try { return readFileSync(`${d}/${f}`, "utf8"); } catch { return null; } }; return reposOf(r(".factory.toml"), r(".factory.json")); };
+
+// the factory workspace around a folder (the nearest manifest upward) and where its repos are
 function factory(from) {
   for (let d = resolve(from); ; d = dirname(d)) {
-    if (existsSync(`${d}/.factory.json`)) { try { return { ws: d, repos: JSON.parse(readFileSync(`${d}/.factory.json`, "utf8")).repos ?? [] }; } catch { die(`${d}/.factory.json is not valid JSON`); } }
+    let repos; try { repos = manifest(d); } catch (e) { die(`${d}: ${e.message}`); }
+    if (repos) return { ws: d, repos };
     if (dirname(d) === d) return null;
   }
 }
@@ -30,9 +35,9 @@ function factoriesFor(places) {
   if (existsSync(wsDir)) for (const e of readdirSync(wsDir)) dirs.add(`${wsDir}/${e}`);
   const out = [];
   for (const ws of dirs) {
-    if (!existsSync(`${ws}/.factory.json`)) continue;
-    let json; try { json = JSON.parse(readFileSync(`${ws}/.factory.json`, "utf8")); } catch { continue; }
-    const repos = (json.repos ?? []).map((r) => { try { return { name: r.name, real: realpathSync(repoPath({ ws }, r)), ports: r.ports }; } catch { return null; } }).filter(Boolean);
+    let list; try { list = manifest(ws); } catch { continue; }
+    if (!list) continue;
+    const repos = list.map((r) => { try { return { name: r.name, real: realpathSync(repoPath({ ws }, r)), ports: r.ports }; } catch { return null; } }).filter(Boolean);
     out.push({ ws, repos });
   }
   return out;

@@ -223,7 +223,7 @@ export class Repos {
         .when(this.tab === "gasto", (el) => el.child(spending(this, t)))
         .when(this.tab === "det", (el) => el.child(detecciones(this, t)))
         .when(this.tab === "repos", (el) => el
-          .when(this.bad, (e) => e.child(div().px(4).text_size(12).text_color(t.blocked).child(".factory.json is not valid JSON: fix it by hand.")))
+          .when(this.bad, (e) => e.child(div().px(4).text_size(12).text_color(t.blocked).child(".factory.toml is not valid: fix it by hand.")))
           .when(this.rows === undefined, (e) => e.child(div().p(10).text_color(t.muted).child("…")))
           .when(this.rows && !this.rows.length && !this.bad, (e) => e.child(div().p(10).text_color(t.dim).child("no repos yet: press \"add\"")))
           .children((this.rows ?? []).map((r, i) => this.row(r, i, t)))));

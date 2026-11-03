@@ -13,6 +13,8 @@ case ${1:-} in
   push)
     # tabs-one cannot import another mod: its copy of the task list code comes from factory-tasks
     cp "$R/herdr/mods/factory-tasks/lib.js" "$R/herdr/mods/tabs-one/tasks-lib.js"
+    # the mods that read a workspace's manifest each have their own copy of its parser
+    for m in spaces-one worktree-wt; do cp "$R/herdr/mods/factory/manifest.js" "$R/herdr/mods/$m/manifest.js"; done
     for m in $MODS; do mkdir -p "$H/mods/$m"; rs "$R/herdr/mods/$m/" "$H/mods/$m/"; done
     for m in $OLD_MODS; do rm -rf "$H/mods/$m"; done
     rm -rf "$H/data/jw-diff"  # the diff viewer was a terminal program for a day; it is the jw-diff mod now

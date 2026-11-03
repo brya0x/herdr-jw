@@ -2,6 +2,8 @@
 // Everything else (tables, unknown keys) is ignored, as jw does. [[env]] file = "x" is read as copy = ["x"]:
 // the file jw wrote for these repos says "copied from the main checkout", and jw's current parser drops it.
 
+import { reposOf } from "./manifest.js";
+
 function unquote(raw, fail) {
   const q = raw[0];
   if (raw.length < 2 || raw[raw.length - 1] !== q) fail("unterminated string");
@@ -143,16 +145,17 @@ export const factoryRepo = (main, factories) => {
   return null;
 };
 export const factoryRoot = (main, factories) => factoryRepo(main, factories)?.root ?? null;
-export const withFactoryPorts = (cfg, repo) => repo?.ports ? { ...cfg, ports: checkPorts(repo.ports, ".factory.json") } : cfg;
+export const withFactoryPorts = (cfg, repo) => repo?.ports ? { ...cfg, ports: checkPorts(repo.ports, ".factory.toml") } : cfg;
 // The factory workspaces found in `dirs`, with each repo's resolved path. `read(path)` gives a file's text (or null/throws), `real(path)`
 // the resolved path of a folder (or "" when it is not there): the caller's own way to read files, so the dialog and a test share this.
 export async function factoriesOf(dirs, read, real) {
   const out = [];
   for (const ws of dirs) {
-    let json; try { json = JSON.parse((await read(`${ws}/.factory.json`)) ?? "null"); } catch { continue; }
-    if (!json) continue;
+    const rd = async (f) => { try { return (await read(`${ws}/${f}`)) ?? null; } catch { return null; } };
+    let list; try { list = reposOf(await rd(".factory.toml"), await rd(".factory.json")); } catch { continue; }
+    if (!list) continue;
     const repos = [];
-    for (const r of json.repos ?? []) {
+    for (const r of list) {
       const rp = await real(r.kind === "dir" && r.path ? r.path : `${ws}/repos/${r.name}`);
       if (rp) repos.push({ name: r.name, real: rp, ports: r.ports });
     }
@@ -160,7 +163,7 @@ export async function factoriesOf(dirs, read, real) {
   }
   return out;
 }
-// a folder and every folder above it: where a .factory.json may be
+// a folder and every folder above it: where a .factory.toml may be
 export const ancestorsOf = (p) => { const out = []; for (let d = p; ; d = d.slice(0, d.lastIndexOf("/")) || "/") { out.push(d); if (d === "/") return out; } };
 
 // jw's rule for the folder of a worktree: one piece, no . or .., no / \ or control characters, up to 80.
