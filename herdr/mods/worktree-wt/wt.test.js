@@ -24,8 +24,8 @@ const proj = `${root}/proj`, appHome = `${root}/app-home`;
 mkdirSync(proj); writeFileSync(`${proj}/.env`, "A=1");
 writeFileSync(`${proj}/.jw.toml`, 'root = "../proj-wt"\ncopy = [".env"]\n[ports]\nweb = 0\nconsole_api = 3\nmetro = 81\n[[env]]\nfile = ".env"\nset = { X = "http://localhost:{port.web}" }\n');
 for (const a of [["init", "-q"], ["add", "."], ["-c", "user.name=t", "-c", "user.email=t@t", "commit", "-q", "-m", "i"]]) spawnSync("git", a, { cwd: proj });
-const make = (name, cwd = proj) => { // create() = git worktree add + the space.new args; the first pane's environment is read by running its argv with $SHELL = env
-  const r = spawnSync("bun", ["-e", 'const { plan, create } = await import(process.argv[1]); console.log(JSON.stringify(create(plan([process.argv[3]], process.argv[2]))))', new URL("./wt.js", import.meta.url).pathname, cwd, name], { encoding: "utf8", env: { ...process.env, HERDR_APP_HOME: appHome } });
+const make = (name, cwd = proj, ...extra) => { // create() = git worktree add + the space.new args; the first pane's environment is read by running its argv with $SHELL = env
+  const r = spawnSync("bun", ["-e", 'const { plan, create } = await import(process.argv[1]); console.log(JSON.stringify(create(plan(JSON.parse(process.argv[3]), process.argv[2]))))', new URL("./wt.js", import.meta.url).pathname, cwd, JSON.stringify([name, ...extra])], { encoding: "utf8", env: { ...process.env, HERDR_APP_HOME: appHome } });
   assert.equal(r.status, 0, r.stderr);
   const space = JSON.parse(r.stdout), a = space.argv;
   const env = Object.fromEntries(spawnSync(a[0], a.slice(1), { cwd: space.folder, encoding: "utf8", env: { ...process.env, SHELL: "/usr/bin/env" } }).stdout.split("\n").filter((l) => l.startsWith("JW_")).map((l) => l.split(/=(.*)/s).slice(0, 2)));
@@ -43,4 +43,14 @@ assert.equal(make("three").env.JW_PORT_BASE, "20000"); // the slot of a worktree
 writeFileSync(`${proj}/.jw.toml`, 'root = "../proj-wt"\n');
 assert.deepEqual(make("four").env, { JW_WORKSPACE_DIR: `${root}/proj-wt/four`, JW_NAME: "four" });
 for (const n of ["two", "three", "four"]) spawnSync("git", ["worktree", "remove", "--force", `${root}/proj-wt/${n}`], { cwd: proj });
+// a repo of a factory workspace may carry its own ports in .factory.json: they replace the .jw.toml's [ports] (no merge)
+writeFileSync(`${ws}/repos/app/.jw.toml`, "[ports]\nweb = 0\nmetro = 81\n");
+writeFileSync(`${ws}/.factory.json`, JSON.stringify({ repos: [{ kind: "gh", id: "o/app", name: "app", ports: { web: 1, api: 5 } }] }));
+const f = make("fac", ws, "--in", "app");
+assert.deepEqual(f.env, { JW_WORKSPACE_DIR: `${ws}/worktrees/app/fac`, JW_NAME: "fac", JW_PORT_BASE: "20000", JW_PORT_WEB: "20001", JW_PORT_API: "20005" });
+spawnSync("git", ["worktree", "remove", "--force", `${ws}/worktrees/app/fac`], { cwd: `${ws}/repos/app` });
+// bad ports there are refused as in a .jw.toml
+writeFileSync(`${ws}/.factory.json`, JSON.stringify({ repos: [{ kind: "gh", id: "o/app", name: "app", ports: { web: 100 } }] }));
+r = spawnSync("bun", ["-e", 'const { plan } = await import(process.argv[1]); plan(["bad", "--in", "app"], process.argv[2])', new URL("./wt.js", import.meta.url).pathname, ws], { encoding: "utf8" });
+assert.notEqual(r.status, 0); assert.match(r.stderr, /\.factory\.json: ports\.web must be/);
 console.log("ok");

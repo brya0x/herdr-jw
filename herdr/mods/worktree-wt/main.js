@@ -4,7 +4,7 @@
 import { View, div } from "gpui-kit";
 import { v_flex, h_flex, InputState, Input, Scrollbar } from "gpui-base";
 import { run, props, openOverlay, closeOverlay, theme, spaces, panes, exec, home, appHome, readTextFile, writeTextFile, notify } from "herdr";
-import { parse as parseJw, rootOf, folderOf, validFolder, setupScript, paneArgv, factoryRoot, factoriesOf, ancestorsOf, personalFile, slotsFile, claimSlot, jwEnv } from "./jwtoml.js";
+import { parse as parseJw, rootOf, folderOf, validFolder, setupScript, paneArgv, factoryRepo, withFactoryPorts, factoriesOf, ancestorsOf, personalFile, slotsFile, claimSlot, jwEnv } from "./jwtoml.js";
 
 // Where a space is now: its first terminal's live folder, else where it was made.
 function place(s) {
@@ -163,7 +163,9 @@ export default class Worktree extends View {
             this.cfg = parseJw(text ?? ""); this.openMode = this.cfg.open;
           }
           catch (e) { this.cfgError = String(e?.message ?? e); }
-          this.root = props()?.root || (await this.factoryRoot(repo.main)) || null; // the repo of a factory workspace: its worktrees folder
+          const fr = await this.factoryRepo(repo.main); // the repo of a factory workspace: its worktrees folder and its own ports
+          this.root = props()?.root || fr?.root || null;
+          try { if (this.cfg) this.cfg = withFactoryPorts(this.cfg, fr); } catch (e) { this.cfgError = String(e?.message ?? e); this.cfg = null; }
         }
         if (repo && this.opening) this.list = await checkouts(repo, this.on);
         this.repo = repo;
@@ -175,12 +177,12 @@ export default class Worktree extends View {
 
   // The factory workspace that lists `main` among its repos (their folders may be links to repos elsewhere), found from where the
   // dialog was opened and from every ~/ws/*: <workspace>/worktrees/<repo name>, or null.
-  async factoryRoot(main) {
+  async factoryRepo(main) {
     if (this.on) return null;
     const real = async (p) => (await exec("sh", ["-c", 'cd "$1" 2>/dev/null && pwd -P', "sh", p])).stdout.trim();
     const dirs = new Set([this.folder, props()?.folder].filter(Boolean).flatMap(ancestorsOf));
     for (const e of (await exec("ls", [`${this.userHome}/ws`])).stdout.split("\n").filter(Boolean)) dirs.add(`${this.userHome}/ws/${e}`);
-    return factoryRoot(await real(main) || main, await factoriesOf(dirs, (p) => readTextFile(p), real));
+    return factoryRepo(await real(main) || main, await factoriesOf(dirs, (p) => readTextFile(p), real));
   }
 
   space() {

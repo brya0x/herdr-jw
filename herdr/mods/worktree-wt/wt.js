@@ -8,7 +8,7 @@ import { readFileSync, writeFileSync, mkdirSync, existsSync, realpathSync, readd
 import { spawnSync } from "node:child_process";
 import { homedir } from "node:os";
 import { dirname, resolve } from "node:path";
-import { parse, rootOf, folderOf, validFolder, setupScript, paneArgv, factoryRoot, ancestorsOf, personalFile, slotsFile, claimSlot, jwEnv } from "./jwtoml.js";
+import { parse, rootOf, folderOf, validFolder, setupScript, paneArgv, factoryRepo, withFactoryPorts, ancestorsOf, personalFile, slotsFile, claimSlot, jwEnv } from "./jwtoml.js";
 
 const die = (m) => { console.error(`wt: ${m}`); process.exit(1); };
 const run = (cmd, args, cwd) => { const r = spawnSync(cmd, args, { cwd, encoding: "utf8" }); return { ok: r.status === 0, out: (r.stdout ?? "").trim(), err: (r.stderr ?? "").trim() }; };
@@ -32,7 +32,7 @@ function factoriesFor(places) {
   for (const ws of dirs) {
     if (!existsSync(`${ws}/.factory.json`)) continue;
     let json; try { json = JSON.parse(readFileSync(`${ws}/.factory.json`, "utf8")); } catch { continue; }
-    const repos = (json.repos ?? []).map((r) => { try { return { name: r.name, real: realpathSync(repoPath({ ws }, r)) }; } catch { return null; } }).filter(Boolean);
+    const repos = (json.repos ?? []).map((r) => { try { return { name: r.name, real: realpathSync(repoPath({ ws }, r)), ports: r.ports }; } catch { return null; } }).filter(Boolean);
     out.push({ ws, repos });
   }
   return out;
@@ -70,7 +70,9 @@ export function plan(argv, cwd = process.cwd()) {
   const origin = git(main, "remote", "get-url", "origin");
   const file = [`${main}/.jw.toml`, personalFile(homedir(), origin.ok ? origin.out : "", main)].find(existsSync);
   let cfg; try { cfg = parse(file ? readFileSync(file, "utf8") : ""); } catch (e) { die(`${file}: ${e.message}`); }
-  const owned = name && fac ? `${fac.ws}/worktrees/${name}` : factoryRoot(realpathSync(main), factoriesFor([cwd, start])); // by where we are, else by the repo
+  const fr = factoryRepo(realpathSync(main), factoriesFor([cwd, start]));
+  try { cfg = withFactoryPorts(cfg, fr); } catch (e) { die(e.message); }
+  const owned = name && fac ? `${fac.ws}/worktrees/${name}` : fr?.root ?? null; // by where we are, else by the repo
   if (fac && o.in && !owned && !o.loose) die(`${o.in} is not a repo of the workspace ${fac.ws}: its worktree would not be grouped under it. Use --in ${fac.repos.map((r) => r.name).join("|") || "<repo name>"} (or ${fac.ws}/repos/<name>), or pass --loose to make a worktree of ${main} anyway`);
   const dest = `${owned ?? rootOf(cfg, main, homedir())}/${folder}`;
   if (existsSync(dest)) die(`${dest} already exists`);

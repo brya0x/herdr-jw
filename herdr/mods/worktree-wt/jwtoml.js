@@ -88,6 +88,16 @@ const strings = (v, key) => {
   return v;
 };
 
+// jw's rules for the names and offsets of a block of ports (project.rs); `where` is the file the error names.
+export function checkPorts(ports, where) {
+  for (const [n, o] of Object.entries(ports)) {
+    if (!/^[a-z0-9_]+$/.test(n)) throw new Error(`${where}: ports names ${JSON.stringify(n)}: use lowercase letters, digits and _`);
+    if (n === "base") throw new Error(`${where}: ports cannot name a port \`base\`: that is the first port of the block`);
+    if (!Number.isInteger(o) || o < 0 || o > 99) throw new Error(`${where}: ports.${n} must be a whole number from 0 to 99`);
+  }
+  return ports;
+}
+
 function config(top, env, ports) {
   const setup = strings(top.setup, "setup").map((l) => l.trim()).filter(Boolean);
   for (const l of setup) for (const m of l.match(/\{[^}]*\}/g) ?? []) if (m !== "{name}" && m !== "{branch}") throw new Error(`.jw.toml: setup only accepts {name} and {branch}, not ${m}`);
@@ -95,11 +105,7 @@ function config(top, env, ports) {
   for (const p of copy) if (p.startsWith("/") || p.split("/").includes("..")) throw new Error(`.jw.toml: copy must stay inside the repo: ${p}`);
   if (top.open !== undefined && top.open !== "shell" && top.open !== "claude") throw new Error('.jw.toml: open must be "shell" or "claude"');
   if (top.root !== undefined && typeof top.root !== "string") throw new Error(".jw.toml: root must be a string");
-  for (const [n, o] of Object.entries(ports)) { // jw's rules for [ports] (project.rs)
-    if (!/^[a-z0-9_]+$/.test(n)) throw new Error(`.jw.toml: ports names ${JSON.stringify(n)}: use lowercase letters, digits and _`);
-    if (n === "base") throw new Error(".jw.toml: ports cannot name a port `base`: that is the first port of the block");
-    if (!Number.isInteger(o) || o < 0 || o > 99) throw new Error(`.jw.toml: ports.${n} must be a whole number from 0 to 99`);
-  }
+  checkPorts(ports, ".jw.toml");
   return { root: (top.root ?? "").trim(), setup, copy, open: top.open ?? "shell", ports };
 }
 
@@ -131,10 +137,13 @@ export const personalFile = (home, origin, path) => `${home}/.config/jw/projects
 
 // A repo that belongs to a factory workspace gets its worktrees in <workspace>/worktrees/<repo name>, wherever the person is when
 // they make one. factories: [{ ws, repos: [{ name, real }] }], `real` each repo's resolved path; main is the repo's resolved path.
-export const factoryRoot = (main, factories) => {
-  for (const f of factories) { const r = f.repos.find((x) => x.real === main); if (r) return `${f.ws}/worktrees/${r.name}`; }
+// A repo of the workspace may carry its own `ports` ({ web: 0, api: 3 }): in a factory workspace they replace the [ports] of its .jw.toml.
+export const factoryRepo = (main, factories) => {
+  for (const f of factories) { const r = f.repos.find((x) => x.real === main); if (r) return { ...r, ws: f.ws, root: `${f.ws}/worktrees/${r.name}` }; }
   return null;
 };
+export const factoryRoot = (main, factories) => factoryRepo(main, factories)?.root ?? null;
+export const withFactoryPorts = (cfg, repo) => repo?.ports ? { ...cfg, ports: checkPorts(repo.ports, ".factory.json") } : cfg;
 // The factory workspaces found in `dirs`, with each repo's resolved path. `read(path)` gives a file's text (or null/throws), `real(path)`
 // the resolved path of a folder (or "" when it is not there): the caller's own way to read files, so the dialog and a test share this.
 export async function factoriesOf(dirs, read, real) {
@@ -145,7 +154,7 @@ export async function factoriesOf(dirs, read, real) {
     const repos = [];
     for (const r of json.repos ?? []) {
       const rp = await real(r.kind === "dir" && r.path ? r.path : `${ws}/repos/${r.name}`);
-      if (rp) repos.push({ name: r.name, real: rp });
+      if (rp) repos.push({ name: r.name, real: rp, ports: r.ports });
     }
     out.push({ ws, repos });
   }
