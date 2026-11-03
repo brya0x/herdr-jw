@@ -5,7 +5,7 @@
 import { View, div } from "gpui-kit";
 import { v_flex, h_flex, Scrollbar, v_virtual_list } from "gpui-base";
 import { spaces, panes, focused, exec, readTextFile, writeTextFile, watchFolder, theme, settings, appHome, props, shared, setShared } from "herdr";
-import { parseNumstat, parseStatus, parseNameStatus, parseLog, chooseBase, diffRows, splitRows, signature, seenKey, isSeen, ago } from "./lib.js";
+import { parseNumstat, parseStatus, parseNameStatus, parseLog, chooseBase, diffRows, splitRows, signature, seenKey, isSeen, ago, siblingGlob } from "./lib.js";
 
 const SCOPES = [["work", "Uncommitted"], ["branch", "Branch"], ["commits", "Commits"]];
 const MAX_LINES = 1500;
@@ -18,7 +18,6 @@ function location() {
   const on = f?.pane === null ? (f.terminal?.includes("/") ? f.terminal.split("/")[0] : null) : space?.machine ?? null;
   return { cwd: pane?.cwd || f?.cwd || space?.folder, on };
 }
-const key = () => JSON.stringify(location());
 // Reads write nothing under .git (no index refresh or lock, no fsmonitor cookie): the folder watch would see it, and every refresh would start the next one.
 const READ = ["--no-optional-locks", "-c", "core.fsmonitor=false", "-c", "diff.autoRefreshIndex=false"];
 const SHOW = ["--no-ext-diff", "--no-textconv", "--no-color"];
@@ -30,7 +29,7 @@ const countLines = (text) => text ? text.split("\n").length - Number(text.endsWi
 export default class Diff extends View {
   init(_props, cx) {
     this.scope = "work"; this.commit = null; this.commits = []; this.files = []; this.rows = []; this.pairs = []; this.diffWidth = 0;
-    this.base = null; this.marks = {}; this.handle = cx.focus_handle();
+    this.base = null; this.sel = null; this.siblings = []; this.counts = {}; this.marks = {}; this.handle = cx.focus_handle();
     this.marksFile = `${appHome()}/data/diff-seen.json`;
     cx.spawn(async (cx) => {
       try { this.marks = JSON.parse((await readTextFile(this.marksFile)) ?? "{}"); } catch { this.marks = {}; }
@@ -49,11 +48,25 @@ export default class Diff extends View {
     });
   }
 
+  // The pane's folder, or the sibling repo picked in the header.
+  where() { const l = location(); return this.sel ? { ...l, cwd: this.sel } : l; }
+  key() { return JSON.stringify(this.where()); }
+
+  // Opened in a factory worktree: the same branch's worktrees in the workspace's other repos, and how many files each one changed.
+  async findSiblings(base) {
+    const g = base.on ? null : siblingGlob(base.cwd);
+    if (!g) return [];
+    const r = await exec("sh", ["-c", 'for d in "$1"/worktrees/*/"$2"; do [ -e "$d/.git" ] && echo "$d"; done', "sh", g.workspace, g.name]);
+    return r.code === 0 ? r.stdout.split("\n").filter(Boolean).map((path) => ({ path, repo: path.split("/").slice(-2)[0] })) : [];
+  }
+
   reset() { this.commit = null; this.commits = []; this.files = []; this.open = null; this.closed = false; this.setLines([]); this.note = null; this.error = null; }
 
   refresh(cx) {
     if (this.loading) return;
-    const { cwd, on } = location(), context = key();
+    const opened = location(), openedKey = JSON.stringify(opened);
+    if (openedKey !== this.openedKey) { this.openedKey = openedKey; this.sel = null; this.siblings = []; this.counts = {}; this.siblingsFor = null; }
+    const { cwd, on } = this.where(), context = this.key();
     if (context !== this.context) { this.context = context; this.root = null; this.watched = null; this.reset(); }
     if (!cwd) return;
     const scope = this.scope, commit = this.commit;
@@ -61,7 +74,14 @@ export default class Diff extends View {
     cx.spawn(async (cx) => {
       try {
         const top = await exec("git", ["rev-parse", "--show-toplevel"], { cwd, on });
-        if (key() !== context) return;
+        if (this.key() !== context) return;
+        if (this.siblingsFor !== openedKey) { const found = await this.findSiblings(opened); if (this.openedKey === openedKey) { this.siblings = found; this.siblingsFor = openedKey; } }
+        for (const p of this.siblings) {
+          const st = await exec("git", [...READ, "status", "--porcelain=v1", "--untracked-files=all"], { cwd: p.path, on });
+          const oh = (await exec("git", [...READ, "symbolic-ref", "--short", "refs/remotes/origin/HEAD"], { cwd: p.path, on })).stdout.trim();
+          const ah = oh ? await exec("git", [...READ, "rev-list", "--count", `${oh}..HEAD`], { cwd: p.path, on }) : null;
+          this.counts[p.path] = { n: st.code === 0 ? st.stdout.split("\n").filter(Boolean).length : 0, ahead: ah?.code === 0 ? Number(ah.stdout) || 0 : 0 };
+        }
         if (top.code !== 0) { this.root = null; this.reset(); this.error = "Not a git repository"; return; }
         const root = top.stdout.trim(), git = (args) => exec("git", [...READ, ...args], { cwd: root, on });
         const refs = (await git(["for-each-ref", "--format=%(refname:short)", "refs/heads", "refs/remotes"])).stdout.split("\n").filter(Boolean);
@@ -96,13 +116,13 @@ export default class Diff extends View {
           commits = r.code === 0 ? parseLog(r.stdout) : [];
           if (!commits.length) hint = base ? `No new commits over ${base}` : "No commits";
         }
-        if (key() !== context || scope !== this.scope || commit !== this.commit) return;
+        if (this.key() !== context || scope !== this.scope || commit !== this.commit) return;
         this.root = root; this.on = on; this.hasHead = head.code === 0; this.base = base; this.files = files; this.commits = commits; this.limited = limited; this.hint = hint; this.error = null;
         this.watch(root, cx);
         if (this.open && !files.some((f) => f.path === this.open)) { this.open = null; this.setLines([]); }
         if (!this.open && !this.closed && files.length) this.open = files[0].path; // the first file's diff shows until you pick another
-        if (this.open) { try { await this.load(this.open, context); } catch { if (key() === context) this.setLines(["Cannot show this diff (too large or unreadable)"]); } }
-      } catch (e) { if (key() === context) this.error = String(e); }
+        if (this.open) { try { await this.load(this.open, context); } catch { if (this.key() === context) this.setLines(["Cannot show this diff (too large or unreadable)"]); } }
+      } catch (e) { if (this.key() === context) this.error = String(e); }
       finally { this.loading = false; cx.notify(); }
     });
   }
@@ -128,7 +148,7 @@ export default class Diff extends View {
       const all = r.stdout.replace(/\n$/, "").split("\n"), first = all.findIndex((l) => l.startsWith("@@"));
       lines = first < 0 ? [file.binary ? "Binary file changed" : "No text diff"] : all.slice(first);
     }
-    if (key() === context && this.open === path) this.setLines(lines.slice(0, MAX_LINES).map((l) => (l.length > 4000 ? l.slice(0, 4000) + "… (line cut)" : l)));
+    if (this.key() === context && this.open === path) this.setLines(lines.slice(0, MAX_LINES).map((l) => (l.length > 4000 ? l.slice(0, 4000) + "… (line cut)" : l)));
   }
 
   setLines(lines) {
@@ -145,11 +165,13 @@ export default class Diff extends View {
     this.open = this.open === path ? null : path; this.setLines([]); this.note = null; this.closed = !this.open;
     const context = this.context;
     if (this.open) cx.spawn(async (cx) => {
-      try { await this.load(path, context); } catch (e) { if (key() === context && this.open === path) this.note = `Cannot show this diff: ${e}`; }
+      try { await this.load(path, context); } catch (e) { if (this.key() === context && this.open === path) this.note = `Cannot show this diff: ${e}`; }
       cx.notify();
     });
     cx.notify();
   }
+
+  pickRepo(path, cx) { this.sel = path; this.go(this.scope, null, cx); }
 
   go(scope, commit, cx) {
     this.scope = scope; this.commit = commit; this.files = []; this.open = null; this.closed = false; this.setLines([]); this.note = null; this.hint = null;
@@ -195,10 +217,10 @@ export default class Diff extends View {
 
   side() { return shared("jw.diff.side") !== false; } // the file list beside the diff (default) or above it
 
-  fileRow(f, t, side) {
+  fileRow(f, t, side, indent) {
     const parts = f.path.split("/"), name = parts.pop(), seen = isSeen(this.marks, this.root, this.scopeKey(), f);
     const color = f.status === "A" ? t.ansi2 : f.status === "D" || f.status === "U" ? t.ansi1 : t.blocked;
-    return h_flex().id(`file-${f.path}`).h(28).flex_none().px(6).gap(6).items_center().rounded(7).when(this.open === f.path, (e) => e.bg(t.selected)).hover((s) => s.bg(t.hover))
+    return h_flex().id(`file-${f.path}`).h(28).flex_none().px(6).gap(6).when(Boolean(indent), (e) => e.ml(14)).items_center().rounded(7).when(this.open === f.path, (e) => e.bg(t.selected)).hover((s) => s.bg(t.hover))
       .child(div().id(`seen-${f.path}`).flex_none().w(16).h(16).rounded(4).flex().items_center().justify_center().cursor_pointer().border_1().border_color(seen ? t.accent : t.border)
         .when(seen, (e) => e.bg(t.accent).text_color(t.accent_foreground).text_size(11).child("✓")).on_click((_e, cx) => this.toggleSeen(f, cx)))
       .child(h_flex().id(`open-${f.path}`).flex_1().min_w(0).h_full().gap(8).items_center().cursor_pointer().on_click((_e, cx) => this.pick(f.path, cx))
@@ -211,7 +233,7 @@ export default class Diff extends View {
   }
 
   render(cx) {
-    if (key() !== this.context) this.refresh(cx);
+    if (this.key() !== this.context) this.refresh(cx);
     const t = theme(), add = this.files.reduce((n, f) => n + f.add, 0), del = this.files.reduce((n, f) => n + f.del, 0);
     const seenCount = this.files.filter((f) => isSeen(this.marks, this.root, this.scopeKey(), f)).length;
     const inCommitList = this.scope === "commits" && !this.commit;
@@ -237,15 +259,26 @@ export default class Diff extends View {
             .child(div().flex_none().text_size(11).text_color(t.dim).child(ago(c.time)))))
         .when(!this.commits.length, (e) => e.child(div().p(8).text_color(t.dim).child(empty)))
       : (() => {
-        const side = this.side();
+        const side = this.side(), grouped = this.siblings.length > 1;
         const commitHead = this.scope === "commits" && this.commit
           ? h_flex().flex_none().h(32).px(10).gap(8).items_center().border_b(1).border_color(t.border)
             .child(this.btn("back", "‹ commits", false, (cx) => this.go("commits", null, cx)))
             .child(div().text_size(11).text_color(t.accent).child(this.commit.short)).child(div().flex_1().min_w(0).truncate().text_size(12).text_color(t.muted).child(side ? "" : this.commit.subject))
           : null;
         const list = v_flex().id("diff-files").overflow_y_scrollbar().p(6)
-          .when(side, (e) => e.flex_1().min_h(0)).when(!side, (e) => e.flex_none().h(Math.min(200, Math.max(44, this.files.length * 28 + 12))).border_b(1).border_color(t.border))
-          .children(this.files.map((f) => this.fileRow(f, t, side))).when(!this.files.length, (e) => e.child(div().p(8).text_color(t.dim).child(empty)));
+          .when(side, (e) => e.flex_1().min_h(0)).when(!side, (e) => e.flex_none().h(Math.min(grouped ? 260 : 200, Math.max(44, (this.files.length + (grouped ? this.siblings.length : 0)) * 28 + 12))).border_b(1).border_color(t.border))
+          .children(grouped
+            ? this.siblings.flatMap((p) => {
+                const here = (this.where().cwd + "/").startsWith(p.path + "/"), { n = 0, ahead = 0 } = this.counts[p.path] ?? {};
+                const header = h_flex().id(`repo-${p.repo}`).h(30).flex_none().px(6).gap(6).items_center().rounded(7).cursor_pointer().hover((e) => e.bg(t.hover)).when(here, (e) => e.bg(t.raised))
+                  .on_click((_e, cx) => this.pickRepo(p.path, cx))
+                  .child(div().w(12).flex_none().text_size(10).text_color(t.dim).child(here ? "▾" : "▸"))
+                  .child(div().flex_1().min_w(0).truncate().when(here, (e) => e.font_semibold()).text_color(here ? t.foreground : t.muted).child(p.repo))
+                  .child(div().flex_none().px(6).rounded(9).text_size(11).text_color(n ? t.blocked : ahead ? t.accent : t.dim).child(n ? `${n} changed` : ahead ? `${ahead} ${ahead === 1 ? "commit" : "commits"}` : "clean"));
+                return [header, ...(here ? (this.files.length ? this.files.map((f) => this.fileRow(f, t, side, true)) : [div().ml(14).p(8).text_color(t.dim).child(empty)]) : [])];
+              })
+            : this.files.map((f) => this.fileRow(f, t, side)))
+          .when(!grouped && !this.files.length, (e) => e.child(div().p(8).text_color(t.dim).child(empty)));
         const limited = this.limited ? div().px(12).py(4).text_size(11).text_color(t.dim).child("Showing the first 1,000 files") : null;
         const diff = div().flex_1().min_h(0).min_w(0).h_full().relative().font_family(settings().font_family ?? "JetBrains Mono").text_size(metrics().size)
           .child(div().id("diff-x").size_full().overflow_x_scrollbar()

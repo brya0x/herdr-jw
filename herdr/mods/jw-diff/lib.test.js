@@ -1,6 +1,6 @@
 // bun lib.test.js
 import assert from "node:assert/strict";
-import { splitRows, wrapRows, parseNumstat, parseStatus, parseNameStatus, parseLog, chooseBase, diffRows, signature, seenKey, isSeen, ago } from "./lib.js";
+import { splitRows, wrapRows, parseNumstat, parseStatus, parseNameStatus, parseLog, chooseBase, diffRows, signature, seenKey, isSeen, ago, siblingGlob } from "./lib.js";
 
 assert.deepEqual(parseNumstat("3\t1\ta.js\0-\t-\timg.png\0"), { "a.js": { add: 3, del: 1, binary: false }, "img.png": { add: 0, del: 0, binary: true } });
 assert.deepEqual(parseNumstat("1\t0\ta\tb.js\0")["a\tb.js"].add, 1); // a tab inside a path
@@ -40,4 +40,6 @@ assert.deepEqual([sp[3].left.text, sp[3].right], ["c", null]);
 assert.deepEqual([sp[4].left.number, sp[4].right.number], [4, 3]); // d: old line 4, new line 3 after one removed line more than added
 assert.deepEqual([sp[5].left, sp[5].right.text], [null, "e"]);
 assert.equal(splitRows(["\\ No newline at end of file"])[0].kind, ""); // anything else is a plain row
+assert.deepEqual(siblingGlob("/w/f/worktrees/api/fix-login/src/x"), { workspace: "/w/f", name: "fix-login" });
+assert.equal(siblingGlob("/w/f/repos/api"), null);
 console.log("ok");

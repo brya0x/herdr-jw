@@ -98,3 +98,9 @@ export function splitRows(lines) {
   flush();
   return out;
 }
+
+// A factory worktree is <workspace>/worktrees/<repo>/<name>: its siblings are the other repos' worktrees with the same <name>.
+export function siblingGlob(cwd) {
+  const m = /^(.*)\/worktrees\/([^/]+)\/([^/]+)(?:\/.*)?$/.exec(cwd ?? "");
+  return m ? { workspace: m[1], name: m[3] } : null;
+}
