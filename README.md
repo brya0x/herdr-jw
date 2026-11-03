@@ -9,7 +9,7 @@ what each PR costs and how long it takes. No Android app.
 
 ```
 ~/ws/my-product/               a workspace = a Herdr space with claude beside it
-├── .factory.json              the workspace's repos
+├── .factory.toml              the workspace's repos, a table each: [repos.<name>] kind/path/id, [repos.<name>.ports] offsets in its worktree's block of 100 ports (replace the repo's .jw.toml [ports]); the old .factory.json is still read
 ├── repos/
 │   ├── api/                   cloned from GitHub (or linked to a folder of yours)
 │   └── web/

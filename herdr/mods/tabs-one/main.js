@@ -90,7 +90,7 @@ export default class Tabs extends View {
           const st = (shared("factory.tasks") ?? {})[sp.folder];
           const mine = st?.on && st.space === sp.id; // spaces can share a folder: only the one that started the loop gets its tasks
           if (!sp.folder || !(sp.active || mine)) continue;
-          this.factory[sp.folder] = (await readTextFile(`${sp.folder}/.factory.json`)) !== null;
+          this.factory[sp.folder] = (await readTextFile(`${sp.folder}/.factory.toml`)) !== null || (await readTextFile(`${sp.folder}/.factory.json`)) !== null;
           const path = pathFor(data, sp.folder), tasks = parse(await readTextFile(path));
           this.counts[sp.folder] = count(tasks);
           if (!mine || !ag || !["idle", "done"].includes(ag.status) || !(st.kick || was === "working")) continue;
