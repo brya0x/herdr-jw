@@ -1,4 +1,6 @@
 #!/usr/bin/env bun
+// bun wt.js remove <worktree path> [--force]: what the Worktree dialog does to remove one: refuses while it has uncommitted changes, commits on no remote or
+// submodules (unless --force), closes the spaces whose folder it is, then `git worktree remove`. The branch stays.
 // bun wt.js <name> [--in <repo>] [--branch <branch>] [--from <ref>] [--open shell|claude] [--task <text>] [--loose] [--print]
 // jw's `jw worktree` for Herdr: the creation the Worktree mod does (main.js create()), from a terminal: same git, same .jw.toml,
 // then `herdr-app do space.new` (with the same setup wrapper, paneArgv). --in is a path or the name of a repo of the factory
@@ -41,6 +43,29 @@ function factoriesFor(places) {
     out.push({ ws, repos });
   }
   return out;
+}
+
+export function remove(argv) {
+  const force = argv.includes("--force"), rest = argv.filter((a) => a !== "--force");
+  if (rest.length !== 1 || rest[0].startsWith("--")) die("usage: wt.js remove <worktree path> [--force]");
+  let path; try { path = realpathSync(resolve(rest[0])); } catch { die(`${rest[0]} does not exist`); }
+  const top = git(path, "rev-parse", "--show-toplevel");
+  if (!top.ok || realpathSync(top.out) !== path) die(`${path} is not the top of a git worktree`);
+  const main = git(path, "worktree", "list", "--porcelain").out.split("\n")[0].replace(/^worktree /, "");
+  if (realpathSync(main) === path) die(`${path} is the main checkout of its repo, not a linked worktree`);
+  const status = git(path, "--no-optional-locks", "-c", "core.fsmonitor=false", "status", "--porcelain");
+  if (!status.ok) die(status.err || "git status failed");
+  const ahead = Number(git(path, "rev-list", "--count", "HEAD", "--not", "--remotes").out) || 0;
+  const risks = [status.out && "uncommitted changes", ahead && `${ahead} commit(s) on no remote`, existsSync(`${path}/.gitmodules`) && "submodules (their history goes with it)"].filter(Boolean);
+  if (risks.length && !force) die(`${path} has ${risks.join(", ")}: removing it loses them. Pass --force to remove it anyway`);
+  // the spaces first: a shell sitting in the folder keeps it busy
+  let spaces = null; try { spaces = JSON.parse(run("herdr-app", ["ls"]).out).spaces; } catch {}
+  if (!spaces) console.error("wt: herdr-app does not answer: no space was closed");
+  const here = (f) => { try { return realpathSync(f) === path; } catch { return false; } };
+  for (const sp of (spaces ?? []).filter((x) => !x.machine && here(x.folder))) run("herdr-app", ["do", "space.close", JSON.stringify({ id: sp.id, confirmed: true })]);
+  const r = git(main, "worktree", "remove", ...(force ? ["--force"] : []), path);
+  if (!r.ok) die(r.err || "git worktree remove failed");
+  console.log(`removed ${path}`);
 }
 
 export function plan(argv, cwd = process.cwd()) {
@@ -108,7 +133,8 @@ export function create(p) {
   return { folder: dest, argv };
 }
 
-if (import.meta.main) {
+if (import.meta.main && process.argv[2] === "remove") remove(process.argv.slice(3));
+else if (import.meta.main) {
   const p = plan(process.argv.slice(2));
   const space = create(p);
   if (p.o.print) console.log(JSON.stringify(space));

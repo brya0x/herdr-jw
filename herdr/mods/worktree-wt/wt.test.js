@@ -54,4 +54,18 @@ spawnSync("git", ["worktree", "remove", "--force", `${ws}/worktrees/app/fac`], {
 writeFileSync(`${ws}/.factory.toml`, '[repos.app]\nkind = "gh"\n[repos.app.ports]\nweb = 100\n');
 r = spawnSync("bun", ["-e", 'const { plan } = await import(process.argv[1]); plan(["bad", "--in", "app"], process.argv[2])', new URL("./wt.js", import.meta.url).pathname, ws], { encoding: "utf8" });
 assert.notEqual(r.status, 0); assert.match(r.stderr, /\.factory\.toml: ports\.web must be/);
+// remove: refuses a worktree with changes unless --force, closes its space (a fake herdr-app shows what it was asked), then removes it
+const bin = `${root}/bin`, closed = `${root}/closed.log`; mkdirSync(bin);
+const rm = (path, ...a) => spawnSync("bun", [new URL("./wt.js", import.meta.url).pathname, "remove", path, ...a], { encoding: "utf8", env: { ...process.env, PATH: `${bin}:${process.env.PATH}` } });
+for (const a of [["remote", "add", "origin", proj], ["fetch", "-q", "origin"]]) spawnSync("git", a, { cwd: proj }); // its HEAD is on a remote now
+const dirty = make("rm-dirty").space.folder, clean = make("rm-clean").space.folder;
+writeFileSync(`${bin}/herdr-app`, `#!/bin/sh\ncase "$1" in ls) echo '{"spaces":[{"id":"sp-clean","folder":"${clean}","machine":null},{"id":"sp-other","folder":"${root}","machine":null},{"id":"sp-remote","folder":"${clean}","machine":"m"}]}';; do) echo "$@" >> ${closed};; esac\n`, { mode: 0o755 });
+writeFileSync(`${dirty}/new.txt`, "x");
+r = rm(dirty); assert.notEqual(r.status, 0); assert.match(r.stderr, /uncommitted changes.*--force/);
+assert.equal(spawnSync("test", ["-d", dirty]).status, 0, "nothing was removed"); assert.equal(spawnSync("test", ["-e", closed]).status, 1, "no space was closed");
+r = rm(proj); assert.notEqual(r.status, 0); assert.match(r.stderr, /main checkout/);
+r = rm(clean); assert.equal(r.status, 0, r.stderr); assert.match(r.stdout, /removed /);
+assert.equal(readFileSync(closed, "utf8"), 'do space.close {"id":"sp-clean","confirmed":true}\n', "only the space of that folder, and not the one on another machine");
+assert.equal(spawnSync("test", ["-d", clean]).status, 1);
+assert.equal(rm(dirty, "--force").status, 0); assert.equal(spawnSync("test", ["-d", dirty]).status, 1);
 console.log("ok");
