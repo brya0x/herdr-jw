@@ -25,7 +25,7 @@ Organised by who consumes each thing:
 install.sh  sync.sh  README.md
 .claude-plugin/marketplace.json    the plugin's marketplace (it has to be at the root)
 herdr/                             what Herdr loads
-├── mods/                          factory, factory-tasks, worktree-wt, tabs-one, picker-one, spaces-one, jw-settings, artifacts-jw, jw-diff
+├── mods/                          factory, factory-tasks, worktree-wt, tabs-one, picker-one, spaces-one, jw-settings, artifacts-jw, jw-diff, spaces-add-menu
 ├── layouts/                       jw.json
 └── config/                        keys.json (shortcuts)
 claude/                            what Claude Code loads
