@@ -16,7 +16,7 @@ export default class SpacesAddMenu extends View {
     const t = theme();
     const machine = props()?.machine;
     return v_flex().w_full().p(5).bg(t.popover).text_size(12.8)
-      .child(this.row("space", "Nuevo space", "carpeta existente", () => run("space.new", machine ? { machine } : {})))
+      .child(this.row("space", "Nuevo space", "carpeta actual", () => run("space.new", machine ? { machine } : {})))
       .child(this.row("workspace", "Nuevo workspace", "⌘⇧N", () => run("mod.open", { name: "factory" })));
   }
 }
